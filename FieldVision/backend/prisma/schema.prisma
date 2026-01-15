@@ -1,0 +1,195 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String?
+  appleId   String?  @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects              ProjectMember[]
+  photos                Photo[]
+  comments              Comment[]
+  shareLinks            ShareLink[]
+  refreshTokens         RefreshToken[]
+  deviceTokens          DeviceToken[]
+  notificationPrefs     NotificationPreferences?
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+}
+
+model Project {
+  id         String        @id @default(uuid())
+  name       String
+  address    String
+  latitude   Float?
+  longitude  Float?
+  clientName String?
+  status     ProjectStatus @default(WALKTHROUGH)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  members    ProjectMember[]
+  folders    Folder[]
+  photos     Photo[]
+  shareLinks ShareLink[]
+
+  @@map("projects")
+}
+
+enum ProjectStatus {
+  WALKTHROUGH
+  IN_PROGRESS
+  COMPLETED
+}
+
+model ProjectMember {
+  id        String      @id @default(uuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      MemberRole  @default(CREW)
+  invitedAt DateTime    @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+enum MemberRole {
+  ADMIN
+  CREW
+  VIEWER
+}
+
+model Folder {
+  id         String     @id @default(uuid())
+  projectId  String
+  project    Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name       String
+  folderType FolderType @default(CUSTOM)
+  sortOrder  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  photos Photo[]
+
+  @@map("folders")
+}
+
+enum FolderType {
+  LOCATION
+  PHASE
+  CUSTOM
+}
+
+model Photo {
+  id                     String    @id @default(uuid())
+  projectId              String
+  project                Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  folderId               String?
+  folder                 Folder?   @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  uploaderId             String
+  uploader               User      @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+  capturedAt             DateTime
+  latitude               Float
+  longitude              Float
+  mediaType              MediaType @default(PHOTO)
+  remoteUrl              String
+  thumbnailUrl           String?
+  note                   String?
+  voiceNoteUrl           String?
+  voiceNoteTranscription String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  comments Comment[]
+
+  @@map("photos")
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  photoId   String
+  photo     Photo    @relation(fields: [photoId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("comments")
+}
+
+model ShareLink {
+  id               String    @id @default(uuid())
+  projectId        String
+  project          Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdById      String
+  createdBy        User      @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  token            String    @unique
+  folderIds        String[]
+  dateRangeStart   DateTime?
+  dateRangeEnd     DateTime?
+  expiresAt        DateTime?
+  passwordHash     String?
+  allowDownload    Boolean   @default(false)
+  allowComments    Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  accessCount      Int       @default(0)
+  lastAccessedAt   DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@map("share_links")
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("device_tokens")
+}
+
+model NotificationPreferences {
+  id             String  @id @default(uuid())
+  userId         String  @unique
+  user           User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newPhotos      Boolean @default(true)
+  newComments    Boolean @default(true)
+  projectInvites Boolean @default(true)
+  syncComplete   Boolean @default(false)
+
+  @@map("notification_preferences")
+}
