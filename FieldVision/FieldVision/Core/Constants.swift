@@ -18,8 +18,7 @@ enum AppEnvironment {
             // Local development server
             return "http://localhost:3000"
         case .production:
-            // Railway production server - update this after deployment
-            return "https://api.fieldvision.app"
+            return "https://procam360-production.up.railway.app"
         }
     }
 }
