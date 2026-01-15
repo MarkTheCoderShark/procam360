@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { PrismaClient } from '@prisma/client';
 import { authenticate } from '../middleware/auth.js';
 
 interface RegisterDeviceBody {
@@ -20,9 +21,9 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     '/register',
     async (request, reply) => {
       const { token, platform } = request.body;
-      const userId = request.user.id;
+      const userId = (request.user as { id: string }).id;
 
-      await fastify.prisma.deviceToken.upsert({
+      await (fastify as any).prisma.deviceToken.upsert({
         where: { token },
         update: { userId, platform, updatedAt: new Date() },
         create: { userId, token, platform },
@@ -37,8 +38,8 @@ export async function notificationRoutes(fastify: FastifyInstance) {
     async (request, reply) => {
       const { token } = request.body;
 
-      await fastify.prisma.deviceToken.deleteMany({
-        where: { token, userId: request.user.id },
+      await (fastify as any).prisma.deviceToken.deleteMany({
+        where: { token, userId: (request.user as { id: string }).id },
       });
 
       return reply.status(200).send({});
@@ -46,14 +47,14 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   );
 
   fastify.get('/preferences', async (request, reply) => {
-    const userId = request.user.id;
+    const userId = (request.user as { id: string }).id;
 
-    let prefs = await fastify.prisma.notificationPreferences.findUnique({
+    let prefs = await (fastify as any).prisma.notificationPreferences.findUnique({
       where: { userId },
     });
 
     if (!prefs) {
-      prefs = await fastify.prisma.notificationPreferences.create({
+      prefs = await (fastify as any).prisma.notificationPreferences.create({
         data: { userId },
       });
     }
@@ -69,10 +70,10 @@ export async function notificationRoutes(fastify: FastifyInstance) {
   fastify.patch<{ Body: PreferencesBody }>(
     '/preferences',
     async (request, reply) => {
-      const userId = request.user.id;
+      const userId = (request.user as { id: string }).id;
       const { newPhotos, newComments, projectInvites, syncComplete } = request.body;
 
-      const prefs = await fastify.prisma.notificationPreferences.upsert({
+      const prefs = await (fastify as any).prisma.notificationPreferences.upsert({
         where: { userId },
         update: {
           ...(newPhotos !== undefined && { newPhotos }),

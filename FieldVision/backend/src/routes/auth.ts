@@ -306,7 +306,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
     for (const membership of user.projects) {
       if (membership.role === 'ADMIN') {
-        const adminCount = membership.project.members.filter(m => m.role === 'ADMIN').length;
+        const adminCount = membership.project.members.filter((m: { role: string }) => m.role === 'ADMIN').length;
         if (adminCount === 1 && membership.project.members.length > 1) {
           return reply.status(400).send({
             error: `You are the only admin of project "${membership.project.name}". Please transfer ownership or remove other members before deleting your account.`,
