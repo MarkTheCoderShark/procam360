@@ -88,11 +88,16 @@ final class PurchaseService: NSObject, ObservableObject {
     }
 
     func configure() {
+        // RevenueCat disabled for now - enable when ready with production API key
+        print("RevenueCat disabled - skipping configuration")
+        isConfigured = false
+
+        // TODO: Uncomment below when RevenueCat is set up with production API key (appl_...)
+        /*
         #if DEBUG
         Purchases.logLevel = .debug
         #endif
 
-        // Skip configuration if API key is not set properly
         guard !Self.apiKey.isEmpty else {
             print("RevenueCat API key not configured")
             return
@@ -117,6 +122,7 @@ final class PurchaseService: NSObject, ObservableObject {
             print("Failed to configure RevenueCat: \(error)")
             isConfigured = false
         }
+        */
     }
 
     func loadOfferings() async {
@@ -145,6 +151,11 @@ final class PurchaseService: NSObject, ObservableObject {
     }
 
     func purchase(_ package: Package) async throws -> Bool {
+        guard isConfigured else {
+            errorMessage = "Purchases not configured"
+            return false
+        }
+
         isLoading = true
         errorMessage = nil
 
@@ -166,6 +177,11 @@ final class PurchaseService: NSObject, ObservableObject {
     }
 
     func restorePurchases() async throws {
+        guard isConfigured else {
+            errorMessage = "Purchases not configured"
+            return
+        }
+
         isLoading = true
         errorMessage = nil
 
@@ -180,15 +196,18 @@ final class PurchaseService: NSObject, ObservableObject {
     }
 
     func login(userId: String) async throws {
+        guard isConfigured else { return }
         let (customerInfo, _) = try await Purchases.shared.logIn(userId)
         self.customerInfo = customerInfo
     }
 
     func logout() async throws {
+        guard isConfigured else { return }
         customerInfo = try await Purchases.shared.logOut()
     }
 
     private func listenForCustomerInfoUpdates() {
+        guard isConfigured else { return }
         Task {
             for await info in Purchases.shared.customerInfoStream {
                 await MainActor.run {
