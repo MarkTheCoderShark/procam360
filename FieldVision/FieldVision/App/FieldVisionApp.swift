@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import RevenueCat
 
 @main
 struct FieldVisionApp: App {
@@ -11,8 +12,11 @@ struct FieldVisionApp: App {
     @StateObject private var appState = AppState()
     @StateObject private var authViewModel: AuthViewModel
     @StateObject private var notificationService = NotificationService.shared
+    @StateObject private var purchaseService = PurchaseService.shared
 
     init() {
+        PurchaseService.shared.configure()
+        
         do {
             let schema = Schema([
                 User.self,
@@ -43,6 +47,7 @@ struct FieldVisionApp: App {
                 .environmentObject(appState)
                 .environmentObject(authViewModel)
                 .environmentObject(notificationService)
+                .environmentObject(purchaseService)
                 .task {
                     await notificationService.checkAuthorizationStatus()
                 }

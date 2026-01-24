@@ -1,5 +1,5 @@
 import Foundation
-import StoreKit
+import RevenueCat
 
 enum SubscriptionTier: String, CaseIterable {
     case free = "free"
@@ -38,134 +38,163 @@ enum SubscriptionTier: String, CaseIterable {
 }
 
 @MainActor
-final class PurchaseService: ObservableObject {
+final class PurchaseService: NSObject, ObservableObject {
     static let shared = PurchaseService()
     
-    @Published private(set) var subscriptionStatus: SubscriptionTier = .free
-    @Published private(set) var availableProducts: [Product] = []
+    static let entitlementIdentifier = "Proflow Inspect Pro"
+    static let apiKey = "test_OVNNLuZhIReVVESEfewaBCijaBL"
+    
+    @Published private(set) var customerInfo: CustomerInfo?
+    @Published private(set) var offerings: Offerings?
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
     
-    private var updateListenerTask: Task<Void, Error>?
+    var isPro: Bool {
+        customerInfo?.entitlements[Self.entitlementIdentifier]?.isActive == true
+    }
     
-    private let productIdentifiers = [
-        "com.fieldvision.pro.monthly",
-        "com.fieldvision.pro.annual"
-    ]
+    var subscriptionStatus: SubscriptionTier {
+        guard let entitlement = customerInfo?.entitlements[Self.entitlementIdentifier],
+              entitlement.isActive else {
+            return .free
+        }
+        
+        if entitlement.productIdentifier.contains("annual") || entitlement.productIdentifier.contains("yearly") {
+            return .proAnnual
+        }
+        return .pro
+    }
     
-    private init() {
-        updateListenerTask = listenForTransactions()
+    var currentOffering: Offering? {
+        offerings?.current
+    }
+    
+    var availablePackages: [Package] {
+        currentOffering?.availablePackages ?? []
+    }
+    
+    var monthlyPackage: Package? {
+        currentOffering?.monthly
+    }
+    
+    var annualPackage: Package? {
+        currentOffering?.annual
+    }
+    
+    private override init() {
+        super.init()
+    }
+    
+    func configure() {
+        #if DEBUG
+        Purchases.logLevel = .debug
+        #endif
+        
+        let configuration = Configuration.Builder(withAPIKey: Self.apiKey)
+            .with(storeKitVersion: .storeKit2)
+            .build()
+        
+        Purchases.configure(with: configuration)
+        Purchases.shared.delegate = self
         
         Task {
-            await loadProducts()
-            await updateSubscriptionStatus()
+            await loadOfferings()
+            await refreshCustomerInfo()
         }
+        
+        listenForCustomerInfoUpdates()
     }
     
-    deinit {
-        updateListenerTask?.cancel()
-    }
-    
-    func loadProducts() async {
+    func loadOfferings() async {
         isLoading = true
         errorMessage = nil
         
         do {
-            let products = try await Product.products(for: productIdentifiers)
-            availableProducts = products.sorted { $0.price < $1.price }
+            offerings = try await Purchases.shared.offerings()
         } catch {
-            errorMessage = "Failed to load products: \(error.localizedDescription)"
+            errorMessage = "Failed to load offerings: \(error.localizedDescription)"
         }
         
         isLoading = false
     }
     
-    func purchase(_ product: Product) async throws -> Bool {
-        isLoading = true
-        errorMessage = nil
-        
-        defer { isLoading = false }
-        
-        let result = try await product.purchase()
-        
-        switch result {
-        case .success(let verification):
-            let transaction = try checkVerified(verification)
-            await updateSubscriptionStatus()
-            await transaction.finish()
-            return true
-            
-        case .userCancelled:
-            return false
-            
-        case .pending:
-            errorMessage = "Purchase is pending approval"
-            return false
-            
-        @unknown default:
-            errorMessage = "Unknown purchase result"
-            return false
+    func refreshCustomerInfo() async {
+        do {
+            customerInfo = try await Purchases.shared.customerInfo()
+        } catch {
+            errorMessage = "Failed to get customer info: \(error.localizedDescription)"
         }
     }
     
-    func restorePurchases() async {
+    func purchase(_ package: Package) async throws -> Bool {
         isLoading = true
         errorMessage = nil
         
         defer { isLoading = false }
         
         do {
-            try await AppStore.sync()
-            await updateSubscriptionStatus()
+            let result = try await Purchases.shared.purchase(package: package)
+            
+            if result.userCancelled {
+                return false
+            }
+            
+            customerInfo = result.customerInfo
+            return isPro
         } catch {
-            errorMessage = "Failed to restore purchases: \(error.localizedDescription)"
+            errorMessage = "Purchase failed: \(error.localizedDescription)"
+            throw error
         }
     }
     
-    func updateSubscriptionStatus() async {
-        var hasActiveSubscription = false
+    func restorePurchases() async throws {
+        isLoading = true
+        errorMessage = nil
         
-        for await result in Transaction.currentEntitlements {
-            if case .verified(let transaction) = result {
-                if transaction.productType == .autoRenewable {
-                    hasActiveSubscription = true
-                    
-                    if transaction.productID.contains("annual") {
-                        subscriptionStatus = .proAnnual
-                    } else {
-                        subscriptionStatus = .pro
-                    }
-                    break
-                }
-            }
-        }
+        defer { isLoading = false }
         
-        if !hasActiveSubscription {
-            subscriptionStatus = .free
+        do {
+            customerInfo = try await Purchases.shared.restorePurchases()
+        } catch {
+            errorMessage = "Restore failed: \(error.localizedDescription)"
+            throw error
         }
     }
     
-    var isPro: Bool {
-        subscriptionStatus == .pro || subscriptionStatus == .proAnnual
+    func login(userId: String) async throws {
+        let (customerInfo, _) = try await Purchases.shared.logIn(userId)
+        self.customerInfo = customerInfo
     }
     
-    private func listenForTransactions() -> Task<Void, Error> {
-        Task.detached {
-            for await result in Transaction.updates {
-                if case .verified(let transaction) = result {
-                    await self.updateSubscriptionStatus()
-                    await transaction.finish()
+    func logout() async throws {
+        customerInfo = try await Purchases.shared.logOut()
+    }
+    
+    private func listenForCustomerInfoUpdates() {
+        Task {
+            for await info in Purchases.shared.customerInfoStream {
+                await MainActor.run {
+                    self.customerInfo = info
                 }
             }
         }
     }
+}
+
+extension PurchaseService: PurchasesDelegate {
+    nonisolated func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
+        Task { @MainActor in
+            self.customerInfo = customerInfo
+        }
+    }
     
-    private func checkVerified<T>(_ result: VerificationResult<T>) throws -> T {
-        switch result {
-        case .unverified:
-            throw PurchaseError.failedVerification
-        case .verified(let safe):
-            return safe
+    nonisolated func purchases(_ purchases: Purchases, readyForPromotedProduct product: StoreProduct, purchase startPurchase: @escaping StartPurchaseBlock) {
+        startPurchase { transaction, customerInfo, error, cancelled in
+            Task { @MainActor in
+                if let customerInfo = customerInfo {
+                    self.customerInfo = customerInfo
+                }
+            }
         }
     }
 }
@@ -173,6 +202,7 @@ final class PurchaseService: ObservableObject {
 enum PurchaseError: LocalizedError {
     case failedVerification
     case productNotFound
+    case purchaseFailed(String)
     
     var errorDescription: String? {
         switch self {
@@ -180,29 +210,8 @@ enum PurchaseError: LocalizedError {
             return "Transaction verification failed"
         case .productNotFound:
             return "Product not found"
-        }
-    }
-}
-
-extension Product {
-    var formattedPrice: String {
-        displayPrice
-    }
-    
-    var periodText: String {
-        guard let subscription = subscription else { return "" }
-        
-        switch subscription.subscriptionPeriod.unit {
-        case .month:
-            return subscription.subscriptionPeriod.value == 1 ? "/month" : "/\(subscription.subscriptionPeriod.value) months"
-        case .year:
-            return "/year"
-        case .week:
-            return "/week"
-        case .day:
-            return "/day"
-        @unknown default:
-            return ""
+        case .purchaseFailed(let message):
+            return message
         }
     }
 }

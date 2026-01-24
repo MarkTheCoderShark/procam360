@@ -8,14 +8,23 @@ struct CameraView: View {
     @Environment(\.modelContext) private var modelContext
     
     @StateObject private var viewModel: CameraViewModel
+    @StateObject private var purchaseService = PurchaseService.shared
     @State private var showingVoiceNote = false
     @State private var capturedPhoto: Photo?
     @State private var showingPhotoDetail = false
     @State private var lastCapturedPhoto: Photo?
+    @State private var showingPaywall = false
+    @State private var showingPhotoLimitAlert = false
+    
+    private let freePhotoLimit = 100
     
     init(project: Project) {
         self.project = project
         _viewModel = StateObject(wrappedValue: CameraViewModel())
+    }
+    
+    private var isAtPhotoLimit: Bool {
+        !purchaseService.isPro && project.photos.count >= freePhotoLimit
     }
     
     var body: some View {
@@ -61,6 +70,17 @@ struct CameraView: View {
             }
         } message: {
             Text(viewModel.error ?? "")
+        }
+        .alert("Photo Limit Reached", isPresented: $showingPhotoLimitAlert) {
+            Button("Upgrade to Pro") {
+                showingPaywall = true
+            }
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Free accounts are limited to \(freePhotoLimit) photos per project. Upgrade to Pro for unlimited photos.")
+        }
+        .sheet(isPresented: $showingPaywall) {
+            PaywallView()
         }
     }
     
@@ -173,6 +193,11 @@ struct CameraView: View {
     }
     
     private func captureMedia() {
+        if isAtPhotoLimit {
+            showingPhotoLimitAlert = true
+            return
+        }
+        
         if viewModel.captureMode == .photo {
             viewModel.capturePhoto { imageData, metadata in
                 guard let imageData = imageData else { return }

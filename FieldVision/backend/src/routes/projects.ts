@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, checkSubscriptionLimits, FREE_TIER_LIMITS } from '../middleware/auth.js';
 
 const createProjectSchema = z.object({
   name: z.string().min(1),
@@ -120,10 +120,25 @@ export async function projectRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: checkSubscriptionLimits }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = createProjectSchema.parse(request.body);
     const prisma = (fastify as any).prisma;
     const userId = (request as any).userId;
+    const isPro = (request as any).isPro;
+
+    if (!isPro) {
+      const projectCount = await prisma.projectMember.count({
+        where: { userId, role: 'ADMIN' },
+      });
+
+      if (projectCount >= FREE_TIER_LIMITS.maxProjects) {
+        return reply.status(403).send({
+          error: `Free accounts are limited to ${FREE_TIER_LIMITS.maxProjects} projects. Upgrade to Pro for unlimited projects.`,
+          code: 'PROJECT_LIMIT_REACHED',
+          limit: FREE_TIER_LIMITS.maxProjects,
+        });
+      }
+    }
 
     const project = await prisma.project.create({
       data: {

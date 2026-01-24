@@ -189,6 +189,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         email: true,
         name: true,
         avatarUrl: true,
+        subscriptionTier: true,
+        subscriptionExpiresAt: true,
         createdAt: true,
         updatedAt: true,
       },
@@ -198,7 +200,13 @@ export async function authRoutes(fastify: FastifyInstance) {
       return reply.status(404).send({ error: 'User not found' });
     }
 
-    return user;
+    const isPro = user.subscriptionTier !== 'FREE' && 
+      (!user.subscriptionExpiresAt || user.subscriptionExpiresAt > new Date());
+
+    return {
+      ...user,
+      isPro,
+    };
   });
 
   fastify.patch('/me', { preHandler: authenticate }, async (request: FastifyRequest, reply: FastifyReply) => {

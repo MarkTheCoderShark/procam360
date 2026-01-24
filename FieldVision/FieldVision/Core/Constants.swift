@@ -15,8 +15,8 @@ enum AppEnvironment {
     var apiBaseURL: String {
         switch self {
         case .development:
-            // Local development server
-            return "http://localhost:3000"
+            // Use production for now (change to localhost:3000 for local dev)
+            return "https://procam360-production.up.railway.app"
         case .production:
             return "https://procam360-production.up.railway.app"
         }

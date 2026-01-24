@@ -13,28 +13,27 @@ struct PhotoMapView: View {
     }
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            Map(position: $position) {
-                ForEach(photosWithLocation) { photo in
-                    Annotation("", coordinate: CLLocationCoordinate2D(
-                        latitude: photo.latitude,
-                        longitude: photo.longitude
-                    )) {
-                        PhotoMapPin(photo: photo, isSelected: selectedPhotos.contains(where: { $0.id == photo.id }))
-                            .onTapGesture {
-                                withAnimation {
-                                    selectedPhotos = [photo]
-                                }
+        Map(position: $position) {
+            ForEach(photosWithLocation) { photo in
+                Annotation("", coordinate: CLLocationCoordinate2D(
+                    latitude: photo.latitude,
+                    longitude: photo.longitude
+                )) {
+                    PhotoMapPin(photo: photo, isSelected: selectedPhotos.contains(where: { $0.id == photo.id }))
+                        .onTapGesture {
+                            withAnimation {
+                                selectedPhotos = [photo]
                             }
-                    }
+                        }
                 }
             }
-            .mapStyle(.standard(elevation: .realistic))
-            .mapControls {
-                MapCompass()
-                MapUserLocationButton()
-            }
-
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapCompass()
+            MapUserLocationButton()
+        }
+        .safeAreaInset(edge: .bottom) {
             if !selectedPhotos.isEmpty {
                 selectedPhotoCarousel
             }

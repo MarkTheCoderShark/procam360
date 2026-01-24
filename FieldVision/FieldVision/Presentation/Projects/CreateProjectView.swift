@@ -6,14 +6,45 @@ import CoreLocation
 struct CreateProjectView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Query private var projects: [Project]
     
     @StateObject private var viewModel = CreateProjectViewModel()
+    @StateObject private var purchaseService = PurchaseService.shared
     @State private var showingTemplates = false
     @State private var selectedTemplate: ProjectTemplate?
+    @State private var showingPaywall = false
+    
+    private let freeProjectLimit = 3
     
     var body: some View {
         NavigationStack {
             Form {
+                if isAtProjectLimit {
+                    Section {
+                        HStack(spacing: FVSpacing.sm) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                            VStack(alignment: .leading, spacing: FVSpacing.xxxs) {
+                                Text("Project Limit Reached")
+                                    .font(FVTypography.subheadline)
+                                    .fontWeight(.semibold)
+                                Text("Free accounts are limited to \(freeProjectLimit) projects. Upgrade to Pro for unlimited projects.")
+                                    .font(FVTypography.caption)
+                                    .foregroundStyle(FVColors.secondaryLabel)
+                            }
+                        }
+                        
+                        Button {
+                            showingPaywall = true
+                        } label: {
+                            Text("Upgrade to Pro")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                }
+                
                 Section {
                     Button {
                         showingTemplates = true
@@ -99,12 +130,15 @@ struct CreateProjectView: View {
                     Button("Create") {
                         createProject()
                     }
-                    .disabled(!viewModel.isValid)
+                    .disabled(!viewModel.isValid || isAtProjectLimit)
                     .fontWeight(.semibold)
                 }
             }
             .sheet(isPresented: $showingTemplates) {
                 TemplatePickerView(selectedTemplate: $selectedTemplate)
+            }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
             }
             .alert("Error", isPresented: .constant(viewModel.error != nil)) {
                 Button("OK") {
@@ -116,7 +150,16 @@ struct CreateProjectView: View {
         }
     }
     
+    private var isAtProjectLimit: Bool {
+        !purchaseService.isPro && projects.count >= freeProjectLimit
+    }
+    
     private func createProject() {
+        if isAtProjectLimit {
+            showingPaywall = true
+            return
+        }
+        
         let project = Project(
             name: viewModel.name,
             address: viewModel.address,

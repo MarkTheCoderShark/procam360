@@ -4,20 +4,23 @@ import SwiftData
 struct ProjectDetailView: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
-    
+
     @State private var selectedView: ProjectViewType = .folders
     @State private var showingCamera = false
     @State private var showingShareSheet = false
     @State private var showingEditProject = false
     @State private var showingReportConfig = false
     @State private var showingPaywall = false
+    @State private var showingDeleteConfirmation = false
+    @State private var isDeleting = false
     @StateObject private var purchaseService = PurchaseService.shared
-    
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         ZStack {
             VStack(spacing: 0) {
                 projectHeader
-                
+
                 Picker("View", selection: $selectedView) {
                     ForEach(ProjectViewType.allCases, id: \.self) { viewType in
                         Label(viewType.title, systemImage: viewType.icon)
@@ -27,10 +30,10 @@ struct ProjectDetailView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, FVSpacing.sm)
-                
+
                 selectedViewContent
             }
-            
+
             VStack {
                 Spacer()
                 HStack {
@@ -53,13 +56,13 @@ struct ProjectDetailView: View {
                     } label: {
                         Label("Share Project", systemImage: "square.and.arrow.up")
                     }
-                    
+
                     Button {
                         showingEditProject = true
                     } label: {
                         Label("Edit Project", systemImage: "pencil")
                     }
-                    
+
                     Button {
                         if purchaseService.isPro {
                             showingReportConfig = true
@@ -69,9 +72,9 @@ struct ProjectDetailView: View {
                     } label: {
                         Label("Generate Report", systemImage: "doc.richtext")
                     }
-                    
+
                     Divider()
-                    
+
                     Menu("Change Status") {
                         ForEach(ProjectStatus.allCases, id: \.self) { status in
                             Button {
@@ -81,6 +84,14 @@ struct ProjectDetailView: View {
                                 Label(status.displayName, systemImage: project.status == status ? "checkmark" : status.iconName)
                             }
                         }
+                    }
+
+                    Divider()
+
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Delete Project", systemImage: "trash")
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
@@ -102,31 +113,64 @@ struct ProjectDetailView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }
+        .alert("Delete Project?", isPresented: $showingDeleteConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteProject()
+            }
+        } message: {
+            Text("Are you sure you want to delete \"\(project.name)\"? This will permanently remove all photos, folders, and data associated with this project. This action cannot be undone.")
+        }
+        .disabled(isDeleting)
     }
-    
+
+    private func deleteProject() {
+        isDeleting = true
+
+        let remoteId = project.remoteId
+
+        // Delete from local storage
+        modelContext.delete(project)
+
+        // If the project was synced to remote, delete from server
+        if let remoteId = remoteId {
+            Task {
+                do {
+                    let apiClient = APIClient.shared
+                    try await apiClient.deleteProject(id: remoteId)
+                } catch {
+                    print("Failed to delete project from server: \(error)")
+                }
+            }
+        }
+
+        // Dismiss the view
+        dismiss()
+    }
+
     private var projectHeader: some View {
         VStack(alignment: .leading, spacing: FVSpacing.xs) {
             HStack {
                 Image(systemName: "mappin.circle.fill")
                     .foregroundStyle(FVColors.Fallback.primary)
-                
+
                 Text(project.address)
                     .font(FVTypography.subheadline)
                     .foregroundStyle(FVColors.secondaryLabel)
                     .lineLimit(1)
             }
-            
+
             HStack(spacing: FVSpacing.md) {
                 Label("\(project.photoCount) photos", systemImage: "photo")
                 Label("\(project.folderCount) folders", systemImage: "folder")
-                
+
                 Spacer()
-                
+
                 statusBadge
             }
             .font(FVTypography.caption)
             .foregroundStyle(FVColors.tertiaryLabel)
-            
+
             if project.syncStatus == .pending || project.syncStatus == .failed {
                 syncStatusBanner
             }
@@ -135,7 +179,7 @@ struct ProjectDetailView: View {
         .padding(.vertical, FVSpacing.sm)
         .background(FVColors.secondaryBackground)
     }
-    
+
     private var statusBadge: some View {
         Text(project.status.displayName)
             .font(FVTypography.caption2)
@@ -146,7 +190,7 @@ struct ProjectDetailView: View {
             .foregroundStyle(statusColor)
             .cornerRadius(FVRadius.xs)
     }
-    
+
     private var statusColor: Color {
         switch project.status {
         case .walkthrough: return FVColors.statusWalkthrough
@@ -154,12 +198,12 @@ struct ProjectDetailView: View {
         case .completed: return FVColors.statusCompleted
         }
     }
-    
+
     private var syncStatusBanner: some View {
         HStack(spacing: FVSpacing.xs) {
             Image(systemName: project.syncStatus == .failed ? "exclamationmark.triangle" : "arrow.triangle.2.circlepath")
                 .foregroundStyle(project.syncStatus == .failed ? FVColors.warning : FVColors.Fallback.primary)
-            
+
             Text(project.syncStatus == .failed ? "Sync failed. Will retry automatically." : "Waiting to sync...")
                 .font(FVTypography.caption)
                 .foregroundStyle(FVColors.secondaryLabel)
@@ -169,7 +213,7 @@ struct ProjectDetailView: View {
         .background(FVColors.tertiaryBackground)
         .cornerRadius(FVRadius.xs)
     }
-    
+
     @ViewBuilder
     private var selectedViewContent: some View {
         switch selectedView {
@@ -187,7 +231,7 @@ enum ProjectViewType: String, CaseIterable {
     case folders
     case timeline
     case map
-    
+
     var title: String {
         switch self {
         case .folders: return "Folders"
@@ -195,7 +239,7 @@ enum ProjectViewType: String, CaseIterable {
         case .map: return "Map"
         }
     }
-    
+
     var icon: String {
         switch self {
         case .folders: return "folder"
@@ -208,11 +252,11 @@ enum ProjectViewType: String, CaseIterable {
 struct EditProjectView: View {
     @Bindable var project: Project
     @Environment(\.dismiss) private var dismiss
-    
+
     @State private var name: String = ""
     @State private var address: String = ""
     @State private var clientName: String = ""
-    
+
     var body: some View {
         NavigationStack {
             Form {
@@ -220,7 +264,7 @@ struct EditProjectView: View {
                     TextField("Project Name", text: $name)
                     TextField("Client Name", text: $clientName)
                 }
-                
+
                 Section {
                     TextField("Address", text: $address)
                 }
@@ -231,7 +275,7 @@ struct EditProjectView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
-                
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") {
                         saveChanges()
@@ -246,7 +290,7 @@ struct EditProjectView: View {
             }
         }
     }
-    
+
     private func saveChanges() {
         project.name = name
         project.address = address

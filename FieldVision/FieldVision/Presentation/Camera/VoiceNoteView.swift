@@ -8,23 +8,29 @@ struct VoiceNoteView: View {
     
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = VoiceNoteViewModel()
+    @StateObject private var purchaseService = PurchaseService.shared
+    @State private var showingPaywall = false
     
     var body: some View {
         NavigationStack {
             VStack(spacing: FVSpacing.xl) {
                 Spacer()
                 
-                recordingIndicator
-                
-                if let transcription = viewModel.transcription {
-                    transcriptionView(transcription)
+                if purchaseService.isPro {
+                    recordingIndicator
+                    
+                    if let transcription = viewModel.transcription {
+                        transcriptionView(transcription)
+                    }
+                    
+                    Spacer()
+                    
+                    recordButton
+                    
+                    skipButton
+                } else {
+                    proFeaturePrompt
                 }
-                
-                Spacer()
-                
-                recordButton
-                
-                skipButton
             }
             .padding()
             .navigationTitle("Add Voice Note")
@@ -37,9 +43,55 @@ struct VoiceNoteView: View {
                     }
                 }
             }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+            }
         }
         .onDisappear {
             viewModel.cleanup()
+        }
+    }
+    
+    private var proFeaturePrompt: some View {
+        VStack(spacing: FVSpacing.lg) {
+            Spacer()
+            
+            Image(systemName: "waveform.badge.mic")
+                .font(.system(size: 64))
+                .foregroundStyle(FVColors.tertiaryLabel)
+            
+            Text("Voice Transcription")
+                .font(FVTypography.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(FVColors.label)
+            
+            Text("Voice notes with automatic transcription is a Pro feature. Upgrade to add searchable voice notes to your photos.")
+                .font(FVTypography.body)
+                .foregroundStyle(FVColors.secondaryLabel)
+                .multilineTextAlignment(.center)
+            
+            Spacer()
+            
+            Button {
+                showingPaywall = true
+            } label: {
+                Text("Upgrade to Pro")
+                    .fontWeight(.semibold)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(FVColors.Fallback.primary)
+                    .foregroundStyle(.white)
+                    .cornerRadius(FVRadius.md)
+            }
+            
+            Button {
+                onDismiss()
+                dismiss()
+            } label: {
+                Text("Skip for Now")
+                    .font(FVTypography.headline)
+                    .foregroundStyle(FVColors.Fallback.primary)
+            }
         }
     }
     

@@ -16,3 +16,62 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     return reply.status(401).send({ error: 'Invalid or expired token' });
   }
 }
+
+export async function requirePro(request: FastifyRequest, reply: FastifyReply) {
+  const prisma = (request.server as any).prisma;
+  const userId = (request as any).userId;
+
+  if (!userId) {
+    return reply.status(401).send({ error: 'Authentication required' });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionTier: true, subscriptionExpiresAt: true },
+  });
+
+  if (!user) {
+    return reply.status(404).send({ error: 'User not found' });
+  }
+
+  const isPro = user.subscriptionTier !== 'FREE' && 
+    (!user.subscriptionExpiresAt || user.subscriptionExpiresAt > new Date());
+
+  if (!isPro) {
+    return reply.status(403).send({ 
+      error: 'Pro subscription required',
+      code: 'PRO_REQUIRED',
+    });
+  }
+
+  (request as any).isPro = true;
+}
+
+export async function checkSubscriptionLimits(request: FastifyRequest, reply: FastifyReply) {
+  const prisma = (request.server as any).prisma;
+  const userId = (request as any).userId;
+
+  if (!userId) {
+    return reply.status(401).send({ error: 'Authentication required' });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { subscriptionTier: true, subscriptionExpiresAt: true },
+  });
+
+  if (!user) {
+    return reply.status(404).send({ error: 'User not found' });
+  }
+
+  const isPro = user.subscriptionTier !== 'FREE' && 
+    (!user.subscriptionExpiresAt || user.subscriptionExpiresAt > new Date());
+
+  (request as any).isPro = isPro;
+  (request as any).subscriptionTier = user.subscriptionTier;
+}
+
+export const FREE_TIER_LIMITS = {
+  maxProjects: 3,
+  maxPhotosPerProject: 100,
+} as const;

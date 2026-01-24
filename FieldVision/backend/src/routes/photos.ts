@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, checkSubscriptionLimits, requirePro, FREE_TIER_LIMITS } from '../middleware/auth.js';
 import { getStorageService } from '../services/storage.js';
 import { TranscriptionService } from '../services/transcription.js';
 
@@ -27,10 +27,11 @@ export async function photoRoutes(fastify: FastifyInstance) {
 
   fastify.addHook('preHandler', authenticate);
 
-  fastify.post('/', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/', { preHandler: checkSubscriptionLimits }, async (request: FastifyRequest, reply: FastifyReply) => {
     const body = createPhotoSchema.parse(request.body);
     const prisma = (fastify as any).prisma;
     const userId = (request as any).userId;
+    const isPro = (request as any).isPro;
 
     const member = await prisma.projectMember.findFirst({
       where: { projectId: body.projectId, userId },
@@ -38,6 +39,20 @@ export async function photoRoutes(fastify: FastifyInstance) {
 
     if (!member || member.role === 'VIEWER') {
       return reply.status(403).send({ error: 'Not authorized to add photos to this project' });
+    }
+
+    if (!isPro) {
+      const photoCount = await prisma.photo.count({
+        where: { projectId: body.projectId },
+      });
+
+      if (photoCount >= FREE_TIER_LIMITS.maxPhotosPerProject) {
+        return reply.status(403).send({
+          error: `Free accounts are limited to ${FREE_TIER_LIMITS.maxPhotosPerProject} photos per project. Upgrade to Pro for unlimited photos.`,
+          code: 'PHOTO_LIMIT_REACHED',
+          limit: FREE_TIER_LIMITS.maxPhotosPerProject,
+        });
+      }
     }
 
     const photo = await prisma.photo.create({
@@ -218,7 +233,7 @@ export async function photoRoutes(fastify: FastifyInstance) {
     };
   });
 
-  fastify.post('/:id/voice-note', async (request: FastifyRequest, reply: FastifyReply) => {
+  fastify.post('/:id/voice-note', { preHandler: requirePro }, async (request: FastifyRequest, reply: FastifyReply) => {
     const { id } = request.params as { id: string };
     const prisma = (fastify as any).prisma;
     const userId = (request as any).userId;

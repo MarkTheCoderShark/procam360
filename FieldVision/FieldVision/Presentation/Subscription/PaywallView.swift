@@ -1,11 +1,12 @@
 import SwiftUI
-import StoreKit
+import RevenueCat
+import RevenueCatUI
 
 struct PaywallView: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var purchaseService = PurchaseService.shared
     
-    @State private var selectedProduct: Product?
+    @State private var selectedPackage: Package?
     @State private var isPurchasing = false
     @State private var showingError = false
     @State private var errorMessage = ""
@@ -38,9 +39,7 @@ struct PaywallView: View {
                 Text(errorMessage)
             }
             .onAppear {
-                if let firstProduct = purchaseService.availableProducts.first {
-                    selectedProduct = firstProduct
-                }
+                selectedPackage = purchaseService.annualPackage ?? purchaseService.monthlyPackage
             }
         }
     }
@@ -89,15 +88,15 @@ struct PaywallView: View {
     
     private var productsSection: some View {
         VStack(spacing: FVSpacing.md) {
-            if purchaseService.isLoading && purchaseService.availableProducts.isEmpty {
+            if purchaseService.isLoading && purchaseService.availablePackages.isEmpty {
                 ProgressView()
                     .padding()
             } else {
-                ForEach(purchaseService.availableProducts, id: \.id) { product in
-                    ProductCard(
-                        product: product,
-                        isSelected: selectedProduct?.id == product.id,
-                        onSelect: { selectedProduct = product }
+                ForEach(purchaseService.availablePackages, id: \.identifier) { package in
+                    PackageCard(
+                        package: package,
+                        isSelected: selectedPackage?.identifier == package.identifier,
+                        onSelect: { selectedPackage = package }
                     )
                 }
                 
@@ -110,11 +109,11 @@ struct PaywallView: View {
     
     private var purchaseButton: some View {
         Button {
-            guard let product = selectedProduct else { return }
+            guard let package = selectedPackage else { return }
             Task {
                 isPurchasing = true
                 do {
-                    let success = try await purchaseService.purchase(product)
+                    let success = try await purchaseService.purchase(package)
                     if success {
                         dismiss()
                     }
@@ -140,15 +139,20 @@ struct PaywallView: View {
             .foregroundStyle(.white)
             .cornerRadius(FVRadius.md)
         }
-        .disabled(selectedProduct == nil || isPurchasing)
+        .disabled(selectedPackage == nil || isPurchasing)
     }
     
     private var restoreButton: some View {
         Button {
             Task {
-                await purchaseService.restorePurchases()
-                if purchaseService.isPro {
-                    dismiss()
+                do {
+                    try await purchaseService.restorePurchases()
+                    if purchaseService.isPro {
+                        dismiss()
+                    }
+                } catch {
+                    errorMessage = error.localizedDescription
+                    showingError = true
                 }
             }
         } label: {
@@ -166,9 +170,9 @@ struct PaywallView: View {
                 .multilineTextAlignment(.center)
             
             HStack(spacing: FVSpacing.md) {
-                Link("Terms of Service", destination: URL(string: "https://fieldvision.app/terms")!)
+                Link("Terms of Service", destination: URL(string: "https://proflowinspect.app/terms")!)
                 Text("•")
-                Link("Privacy Policy", destination: URL(string: "https://fieldvision.app/privacy")!)
+                Link("Privacy Policy", destination: URL(string: "https://proflowinspect.app/privacy")!)
             }
             .font(FVTypography.caption)
             .foregroundStyle(FVColors.secondaryLabel)
@@ -177,18 +181,28 @@ struct PaywallView: View {
     }
 }
 
-struct ProductCard: View {
-    let product: Product
+struct PackageCard: View {
+    let package: Package
     let isSelected: Bool
     let onSelect: () -> Void
     
     private var isAnnual: Bool {
-        product.id.contains("annual")
+        package.packageType == .annual
     }
     
     private var savings: String? {
         guard isAnnual else { return nil }
         return "Save 17%"
+    }
+    
+    private var periodText: String {
+        switch package.packageType {
+        case .monthly: return "/month"
+        case .annual: return "/year"
+        case .weekly: return "/week"
+        case .lifetime: return "one-time"
+        default: return ""
+        }
     }
     
     var body: some View {
@@ -220,12 +234,12 @@ struct ProductCard: View {
                 Spacer()
                 
                 VStack(alignment: .trailing, spacing: FVSpacing.xxxs) {
-                    Text(product.formattedPrice)
+                    Text(package.storeProduct.localizedPriceString)
                         .font(FVTypography.title3)
                         .fontWeight(.bold)
                         .foregroundStyle(FVColors.label)
                     
-                    Text(product.periodText)
+                    Text(periodText)
                         .font(FVTypography.caption)
                         .foregroundStyle(FVColors.secondaryLabel)
                 }
@@ -282,6 +296,22 @@ struct UpgradePromptView: View {
         .sheet(isPresented: $showingPaywall) {
             PaywallView()
         }
+    }
+}
+
+struct RevenueCatPaywallView: View {
+    @Environment(\.dismiss) private var dismiss
+    
+    var body: some View {
+        PaywallView()
+            .onPurchaseCompleted { customerInfo in
+                dismiss()
+            }
+            .onRestoreCompleted { customerInfo in
+                if customerInfo.entitlements[PurchaseService.entitlementIdentifier]?.isActive == true {
+                    dismiss()
+                }
+            }
     }
 }
 

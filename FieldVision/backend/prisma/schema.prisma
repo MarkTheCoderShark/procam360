@@ -8,14 +8,17 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String?
-  appleId   String?  @unique
-  name      String
-  avatarUrl String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String            @id @default(uuid())
+  email                  String            @unique
+  password               String?
+  appleId                String?           @unique
+  name                   String
+  avatarUrl              String?
+  subscriptionTier       SubscriptionTier  @default(FREE)
+  subscriptionExpiresAt  DateTime?
+  subscriptionProductId  String?
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
 
   projects              ProjectMember[]
   photos                Photo[]
@@ -26,6 +29,12 @@ model User {
   notificationPrefs     NotificationPreferences?
 
   @@map("users")
+}
+
+enum SubscriptionTier {
+  FREE
+  PRO
+  PRO_ANNUAL
 }
 
 model RefreshToken {

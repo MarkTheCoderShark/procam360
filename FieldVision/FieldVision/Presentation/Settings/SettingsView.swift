@@ -1,11 +1,15 @@
 import SwiftUI
+import RevenueCatUI
 
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
+    @StateObject private var purchaseService = PurchaseService.shared
     @State private var showingLogoutAlert = false
     @State private var showingClearCacheAlert = false
     @State private var cacheCleared = false
     @State private var showingWhatsNew = false
+    @State private var showingPaywall = false
+    @State private var showingCustomerCenter = false
 
     var body: some View {
         NavigationStack {
@@ -18,6 +22,10 @@ struct SettingsView: View {
                     }
                 }
 
+                Section {
+                    subscriptionRow
+                }
+                
                 Section("Preferences") {
                     NavigationLink {
                         CameraSettingsView()
@@ -108,6 +116,47 @@ struct SettingsView: View {
             }
             .sheet(isPresented: $showingWhatsNew) {
                 WhatsNewView()
+            }
+            .sheet(isPresented: $showingPaywall) {
+                PaywallView()
+            }
+            .presentCustomerCenter(isPresented: $showingCustomerCenter)
+        }
+    }
+    
+    private var subscriptionRow: some View {
+        Button {
+            if purchaseService.isPro {
+                showingCustomerCenter = true
+            } else {
+                showingPaywall = true
+            }
+        } label: {
+            HStack(spacing: FVSpacing.md) {
+                ZStack {
+                    Circle()
+                        .fill(purchaseService.isPro ? Color.yellow.opacity(0.2) : FVColors.Fallback.primary.opacity(0.2))
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: purchaseService.isPro ? "crown.fill" : "star.fill")
+                        .foregroundStyle(purchaseService.isPro ? .yellow : FVColors.Fallback.primary)
+                }
+                
+                VStack(alignment: .leading, spacing: FVSpacing.xxxs) {
+                    Text(purchaseService.isPro ? "Proflow Inspect Pro" : "Upgrade to Pro")
+                        .font(FVTypography.headline)
+                        .foregroundStyle(FVColors.label)
+                    
+                    Text(purchaseService.isPro ? "Manage subscription" : "Unlock all features")
+                        .font(FVTypography.caption)
+                        .foregroundStyle(FVColors.secondaryLabel)
+                }
+                
+                Spacer()
+                
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(FVColors.tertiaryLabel)
             }
         }
     }
