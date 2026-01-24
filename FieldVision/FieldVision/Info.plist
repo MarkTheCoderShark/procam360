@@ -37,5 +37,15 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>ProCam360 needs camera access to capture photos and videos for your construction and property documentation projects.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>ProCam360 needs microphone access to record voice notes that can be attached to your photos for detailed documentation.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>ProCam360 uses speech recognition to transcribe your voice notes into text, making them searchable and easier to review.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ProCam360 uses your location to automatically tag photos with GPS coordinates, helping you organize and locate documentation by property address.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ProCam360 needs photo library access to save and export your project photos.</string>
 </dict>
 </plist>

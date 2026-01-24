@@ -50,7 +50,7 @@
 		E912CA39E544476CA7A0AF7F /* ProjectListViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 686C37C535624429A83631FC /* ProjectListViewModel.swift */; };
 		EDDE24BDE7AE4CD8BAFF47E3 /* FieldVisionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 491E791486F145C0A2A9096D /* FieldVisionApp.swift */; };
 		EF46F4370E714C2296EC2041 /* FVLoadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D62D8B59DF484FA28069A8F7 /* FVLoadingView.swift */; };
-		F0C694EA665E4AF6AD0D12C8 /* Resources/Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1F5679EDAD6A4245847E409A /* Resources/Assets.xcassets */; };
+		F0C694EA665E4AF6AD0D12C8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 1F5679EDAD6A4245847E409A /* Assets.xcassets */; };
 		FC76B63E9D2844AAB12AC065 /* ProjectListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DA226854A044B08547F2A9 /* ProjectListView.swift */; };
 		NEW001 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF001 /* OnboardingView.swift */; };
 		NEW002 /* ActivityDashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF002 /* ActivityDashboardView.swift */; };
@@ -72,7 +72,7 @@
 		1B4832EDF7AE49C6B7D2DC5F /* PhotoMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMapView.swift; sourceTree = "<group>"; };
 		1BFF6E930C5443838530C220 /* TimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimelineView.swift; sourceTree = "<group>"; };
 		1ED57332BE8F437FAF87F551 /* ProjectDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectDetailView.swift; sourceTree = "<group>"; };
-		1F5679EDAD6A4245847E409A /* Resources/Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Resources/Assets.xcassets; sourceTree = "<group>"; };
+		1F5679EDAD6A4245847E409A /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1FBDA9C47FA14DD68A8453C3 /* MediaStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaStorage.swift; sourceTree = "<group>"; };
 		205C5CDFFE184EEB84C027EC /* Project.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Project.swift; sourceTree = "<group>"; };
 		20E78E2F46404927B6BBF079 /* AuthFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthFlowView.swift; sourceTree = "<group>"; };
@@ -181,7 +181,7 @@
 		2EAE98EF44D14AB78537C466 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				1F5679EDAD6A4245847E409A /* Resources/Assets.xcassets */,
+				1F5679EDAD6A4245847E409A /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -514,7 +514,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				F0C694EA665E4AF6AD0D12C8 /* Resources/Assets.xcassets in Resources */,
+				F0C694EA665E4AF6AD0D12C8 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
