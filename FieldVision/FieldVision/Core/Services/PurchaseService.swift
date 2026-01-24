@@ -5,7 +5,7 @@ enum SubscriptionTier: String, CaseIterable {
     case free = "free"
     case pro = "pro_monthly"
     case proAnnual = "pro_annual"
-    
+
     var displayName: String {
         switch self {
         case .free: return "Free"
@@ -13,7 +13,7 @@ enum SubscriptionTier: String, CaseIterable {
         case .proAnnual: return "Pro Annual"
         }
     }
-    
+
     var features: [String] {
         switch self {
         case .free:
@@ -40,105 +40,123 @@ enum SubscriptionTier: String, CaseIterable {
 @MainActor
 final class PurchaseService: NSObject, ObservableObject {
     static let shared = PurchaseService()
-    
+
     static let entitlementIdentifier = "Proflow Inspect Pro"
-    static let apiKey = "test_OVNNLuZhIReVVESEfewaBCijaBL"
-    
+    // TODO: Replace with your production RevenueCat API key from dashboard (starts with appl_)
+    static let apiKey = "appl_OVNNLuZhIReVVESEfewaBCijaBL"
+
+    @Published private(set) var isConfigured = false
     @Published private(set) var customerInfo: CustomerInfo?
     @Published private(set) var offerings: Offerings?
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
-    
+
     var isPro: Bool {
         customerInfo?.entitlements[Self.entitlementIdentifier]?.isActive == true
     }
-    
+
     var subscriptionStatus: SubscriptionTier {
         guard let entitlement = customerInfo?.entitlements[Self.entitlementIdentifier],
               entitlement.isActive else {
             return .free
         }
-        
+
         if entitlement.productIdentifier.contains("annual") || entitlement.productIdentifier.contains("yearly") {
             return .proAnnual
         }
         return .pro
     }
-    
+
     var currentOffering: Offering? {
         offerings?.current
     }
-    
+
     var availablePackages: [Package] {
         currentOffering?.availablePackages ?? []
     }
-    
+
     var monthlyPackage: Package? {
         currentOffering?.monthly
     }
-    
+
     var annualPackage: Package? {
         currentOffering?.annual
     }
-    
+
     private override init() {
         super.init()
     }
-    
+
     func configure() {
         #if DEBUG
         Purchases.logLevel = .debug
         #endif
-        
-        let configuration = Configuration.Builder(withAPIKey: Self.apiKey)
-            .with(storeKitVersion: .storeKit2)
-            .build()
-        
-        Purchases.configure(with: configuration)
-        Purchases.shared.delegate = self
-        
-        Task {
-            await loadOfferings()
-            await refreshCustomerInfo()
+
+        // Skip configuration if API key is not set properly
+        guard !Self.apiKey.isEmpty else {
+            print("RevenueCat API key not configured")
+            return
         }
-        
-        listenForCustomerInfoUpdates()
+
+        do {
+            let configuration = Configuration.Builder(withAPIKey: Self.apiKey)
+                .with(storeKitVersion: .storeKit2)
+                .build()
+
+            Purchases.configure(with: configuration)
+            Purchases.shared.delegate = self
+            isConfigured = true
+
+            Task {
+                await loadOfferings()
+                await refreshCustomerInfo()
+            }
+
+            listenForCustomerInfoUpdates()
+        } catch {
+            print("Failed to configure RevenueCat: \(error)")
+            isConfigured = false
+        }
     }
-    
+
     func loadOfferings() async {
+        guard isConfigured else { return }
+
         isLoading = true
         errorMessage = nil
-        
+
         do {
             offerings = try await Purchases.shared.offerings()
         } catch {
             errorMessage = "Failed to load offerings: \(error.localizedDescription)"
         }
-        
+
         isLoading = false
     }
-    
+
     func refreshCustomerInfo() async {
+        guard isConfigured else { return }
+
         do {
             customerInfo = try await Purchases.shared.customerInfo()
         } catch {
             errorMessage = "Failed to get customer info: \(error.localizedDescription)"
         }
     }
-    
+
     func purchase(_ package: Package) async throws -> Bool {
         isLoading = true
         errorMessage = nil
-        
+
         defer { isLoading = false }
-        
+
         do {
             let result = try await Purchases.shared.purchase(package: package)
-            
+
             if result.userCancelled {
                 return false
             }
-            
+
             customerInfo = result.customerInfo
             return isPro
         } catch {
@@ -146,13 +164,13 @@ final class PurchaseService: NSObject, ObservableObject {
             throw error
         }
     }
-    
+
     func restorePurchases() async throws {
         isLoading = true
         errorMessage = nil
-        
+
         defer { isLoading = false }
-        
+
         do {
             customerInfo = try await Purchases.shared.restorePurchases()
         } catch {
@@ -160,16 +178,16 @@ final class PurchaseService: NSObject, ObservableObject {
             throw error
         }
     }
-    
+
     func login(userId: String) async throws {
         let (customerInfo, _) = try await Purchases.shared.logIn(userId)
         self.customerInfo = customerInfo
     }
-    
+
     func logout() async throws {
         customerInfo = try await Purchases.shared.logOut()
     }
-    
+
     private func listenForCustomerInfoUpdates() {
         Task {
             for await info in Purchases.shared.customerInfoStream {
@@ -187,7 +205,7 @@ extension PurchaseService: PurchasesDelegate {
             self.customerInfo = customerInfo
         }
     }
-    
+
     nonisolated func purchases(_ purchases: Purchases, readyForPromotedProduct product: StoreProduct, purchase startPurchase: @escaping StartPurchaseBlock) {
         startPurchase { transaction, customerInfo, error, cancelled in
             Task { @MainActor in
@@ -203,7 +221,7 @@ enum PurchaseError: LocalizedError {
     case failedVerification
     case productNotFound
     case purchaseFailed(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .failedVerification:

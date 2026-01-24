@@ -15,18 +15,18 @@ struct FieldVisionApp: App {
     @StateObject private var purchaseService = PurchaseService.shared
 
     init() {
-        PurchaseService.shared.configure()
-        
+        // Configure SwiftData first, before any other services
+        let schema = Schema([
+            User.self,
+            Project.self,
+            Folder.self,
+            Photo.self,
+            Comment.self,
+            ProjectShareLink.self,
+            SyncQueueItem.self
+        ])
+
         do {
-            let schema = Schema([
-                User.self,
-                Project.self,
-                Folder.self,
-                Photo.self,
-                Comment.self,
-                ProjectShareLink.self,
-                SyncQueueItem.self
-            ])
             let modelConfiguration = ModelConfiguration(
                 schema: schema,
                 isStoredInMemoryOnly: false,
@@ -34,8 +34,22 @@ struct FieldVisionApp: App {
             )
             container = try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
-            fatalError("Failed to configure SwiftData: \(error)")
+            // Fallback to in-memory storage if persistent storage fails
+            print("Failed to configure persistent SwiftData: \(error). Using in-memory storage.")
+            do {
+                let fallbackConfig = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: true,
+                    cloudKitDatabase: .none
+                )
+                container = try ModelContainer(for: schema, configurations: [fallbackConfig])
+            } catch {
+                fatalError("Failed to configure SwiftData even with in-memory storage: \(error)")
+            }
         }
+
+        // Configure RevenueCat after SwiftData
+        PurchaseService.shared.configure()
 
         let authVM = AuthViewModel()
         _authViewModel = StateObject(wrappedValue: authVM)
@@ -88,7 +102,7 @@ class AppDelegate: NSObject, UIApplicationDelegate {
 struct RootView: View {
     @EnvironmentObject var appState: AppState
     @EnvironmentObject var authViewModel: AuthViewModel
-    
+
     @AppStorage("hasCompletedOnboarding") private var hasCompletedOnboarding = false
 
     var body: some View {
