@@ -112,7 +112,7 @@ export default function ProjectDetailPage() {
     for (const file of Array.from(files)) {
       try {
         // Get presigned URL
-        const { uploadUrl, remoteUrl } = await getUploadUrl(
+        const { uploadUrl, mediaUrl } = await getUploadUrl(
           projectId,
           file.name,
           file.type
@@ -121,11 +121,28 @@ export default function ProjectDetailPage() {
         // Upload to S3
         await uploadToS3(uploadUrl, file);
 
+        // Get current location for the photo
+        let latitude = 0;
+        let longitude = 0;
+        if (navigator.geolocation) {
+          try {
+            const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+              navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+            });
+            latitude = position.coords.latitude;
+            longitude = position.coords.longitude;
+          } catch (e) {
+            console.log('Could not get location');
+          }
+        }
+
         // Create photo record
         const photo = await createPhoto({
           projectId,
-          remoteUrl,
+          remoteUrl: mediaUrl,
           capturedAt: new Date().toISOString(),
+          latitude,
+          longitude,
           ...(activeFolder && { folderId: activeFolder }),
         });
 

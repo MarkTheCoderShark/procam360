@@ -166,15 +166,16 @@ export async function getPhotos(projectId: string, page = 1, limit = 50): Promis
   return response.json();
 }
 
-export async function getUploadUrl(projectId: string, filename: string, contentType: string): Promise<{ uploadUrl: string; photoId: string; remoteUrl: string }> {
-  const response = await fetch(`${API_BASE}/projects/${projectId}/photos/upload-url`, {
+export async function getUploadUrl(projectId: string, filename: string, contentType: string): Promise<{ uploadUrl: string; mediaUrl: string; thumbnailUploadUrl: string; thumbnailUrl: string }> {
+  const response = await fetch(`${API_BASE}/photos/upload-url`, {
     method: 'POST',
     headers: getAuthHeaders(),
-    body: JSON.stringify({ filename, contentType }),
+    body: JSON.stringify({ projectId, filename, contentType }),
   });
 
   if (!response.ok) {
-    throw new Error('Failed to get upload URL');
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.error || 'Failed to get upload URL');
   }
 
   return response.json();
@@ -199,8 +200,8 @@ export async function createPhoto(data: {
   remoteUrl: string;
   thumbnailUrl?: string;
   capturedAt: string;
-  latitude?: number;
-  longitude?: number;
+  latitude: number;
+  longitude: number;
   note?: string;
   folderId?: string;
 }): Promise<Photo> {
