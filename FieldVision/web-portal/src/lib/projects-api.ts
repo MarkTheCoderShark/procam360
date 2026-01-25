@@ -182,15 +182,15 @@ export async function getUploadUrl(projectId: string, filename: string, contentT
 }
 
 export async function uploadToS3(uploadUrl: string, file: File): Promise<void> {
+  // Supabase signed upload URLs - upload without Content-Type header
   const response = await fetch(uploadUrl, {
     method: 'PUT',
-    headers: {
-      'Content-Type': file.type,
-    },
     body: file,
   });
 
   if (!response.ok) {
+    const errorText = await response.text().catch(() => '');
+    console.error('Upload failed:', response.status, errorText);
     throw new Error('Failed to upload file');
   }
 }
