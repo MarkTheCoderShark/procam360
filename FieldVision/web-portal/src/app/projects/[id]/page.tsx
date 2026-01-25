@@ -517,7 +517,7 @@ export default function ProjectDetailPage() {
                   setIsGeneratingReport(true);
                   try {
                     const blob = await generateProjectReport(project, photos, {
-                      companyName: reportCompanyName || 'FieldVision',
+                      companyName: reportCompanyName || 'ProCam360',
                     });
                     const filename = `${project.name.replace(/\s+/g, '_')}_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
                     downloadReport(blob, filename);

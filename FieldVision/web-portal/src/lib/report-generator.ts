@@ -19,7 +19,7 @@ export async function generateProjectReport(
 ): Promise<Blob> {
   const {
     title = `${project.name} - Photo Report`,
-    companyName = 'FieldVision',
+    companyName = 'ProCam360',
     companyLogo,
     includeNotes = true,
     includeLocation = true,
@@ -34,8 +34,8 @@ export async function generateProjectReport(
   const contentWidth = pageWidth - margin * 2;
 
   // Colors
-  const primaryColor: [number, number, number] = [0, 78, 137]; // FieldVision blue
-  const accentColor: [number, number, number] = [255, 107, 53]; // FieldVision orange
+  const primaryColor: [number, number, number] = [0, 78, 137]; // ProCam360 blue
+  const accentColor: [number, number, number] = [255, 107, 53]; // ProCam360 orange
 
   // Helper to load image and fix orientation
   async function loadImageAsBase64(url: string): Promise<{ data: string; width: number; height: number } | null> {
@@ -114,7 +114,7 @@ export async function generateProjectReport(
     // Footer
     pdf.setFontSize(10);
     pdf.setTextColor(150, 150, 150);
-    pdf.text('Generated with FieldVision', margin, pageHeight - 15);
+    pdf.text('Generated with ProCam360', margin, pageHeight - 15);
   }
 
   // Photo pages - 1 photo per page, full width

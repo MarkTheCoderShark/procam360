@@ -232,7 +232,7 @@ export default function SharePage() {
       <footer className="bg-white border-t mt-12">
         <div className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
           <div className="text-center text-sm text-gray-500">
-            <p>Shared via FieldVision</p>
+            <p>Shared via ProCam360</p>
           </div>
         </div>
       </footer>

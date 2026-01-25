@@ -48,7 +48,7 @@ export default function LoginPage() {
             Welcome back
           </h2>
           <p className="mt-2 text-gray-600">
-            Sign in to your FieldVision account
+            Sign in to your ProCam360 account
           </p>
         </div>
 

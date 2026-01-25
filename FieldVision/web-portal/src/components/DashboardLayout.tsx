@@ -59,7 +59,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             <div className="w-8 h-8 bg-fieldvision-orange rounded-lg flex items-center justify-center">
               <Camera className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-lg">FieldVision</span>
+            <span className="font-bold text-lg">ProCam360</span>
           </Link>
           <button onClick={() => setSidebarOpen(false)}>
             <X className="w-6 h-6" />
@@ -93,7 +93,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="w-8 h-8 bg-fieldvision-orange rounded-lg flex items-center justify-center">
                 <Camera className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg">FieldVision</span>
+              <span className="font-bold text-lg">ProCam360</span>
             </Link>
           </div>
 

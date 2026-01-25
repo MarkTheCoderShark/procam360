@@ -34,7 +34,7 @@ export default function Home() {
               <div className="w-8 h-8 bg-fieldvision-orange rounded-lg flex items-center justify-center">
                 <Camera className="w-5 h-5 text-white" />
               </div>
-              <span className="font-bold text-lg">FieldVision</span>
+              <span className="font-bold text-lg">ProCam360</span>
             </div>
             <div className="flex items-center gap-3">
               <Link
@@ -139,7 +139,7 @@ export default function Home() {
             Ready to streamline your documentation?
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Join contractors and builders who use FieldVision every day.
+            Join contractors and builders who use ProCam360 every day.
           </p>
           <Link
             href="/register"
@@ -154,7 +154,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="py-8 px-4 sm:px-6 lg:px-8 border-t">
         <div className="max-w-6xl mx-auto text-center text-sm text-gray-500">
-          <p>&copy; {new Date().getFullYear()} FieldVision. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} ProCam360. All rights reserved.</p>
         </div>
       </footer>
     </main>

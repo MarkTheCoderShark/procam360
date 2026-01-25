@@ -6,7 +6,7 @@ import { AuthProvider } from '@/lib/auth-context';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'FieldVision - Job Site Photo Documentation',
+  title: 'ProCam360 - Job Site Photo Documentation',
   description: 'Capture, organize, and share job site photos with your team',
 };
 
