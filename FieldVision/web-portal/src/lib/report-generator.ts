@@ -37,17 +37,41 @@ export async function generateProjectReport(
   const primaryColor: [number, number, number] = [0, 78, 137]; // FieldVision blue
   const accentColor: [number, number, number] = [255, 107, 53]; // FieldVision orange
 
-  // Helper to load image as base64
-  async function loadImageAsBase64(url: string): Promise<string | null> {
+  // Helper to load image and fix orientation
+  async function loadImageAsBase64(url: string): Promise<{ data: string; width: number; height: number } | null> {
     try {
       const response = await fetch(url);
       const blob = await response.blob();
-      return new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(blob);
+
+      // Create an image element
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      const imageUrl = URL.createObjectURL(blob);
+
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject();
+        img.src = imageUrl;
       });
+
+      // Draw to canvas - this automatically handles EXIF orientation in modern browsers
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return null;
+
+      ctx.drawImage(img, 0, 0);
+
+      URL.revokeObjectURL(imageUrl);
+
+      return {
+        data: canvas.toDataURL('image/jpeg', 0.85),
+        width: canvas.width,
+        height: canvas.height,
+      };
     } catch {
       return null;
     }
@@ -116,18 +140,11 @@ export async function generateProjectReport(
       const yOffset = 30;
 
       // Load and add photo
-      const imageData = await loadImageAsBase64(photo.remoteUrl);
-      if (imageData) {
+      const imageResult = await loadImageAsBase64(photo.remoteUrl);
+      if (imageResult) {
         try {
           // Calculate aspect ratio to fit - maximize width
-          const img = new Image();
-          img.src = imageData;
-          await new Promise((resolve) => {
-            img.onload = resolve;
-            img.onerror = resolve;
-          });
-
-          const imgAspect = img.width / img.height;
+          const imgAspect = imageResult.width / imageResult.height;
           let finalWidth = photoWidth;
           let finalHeight = photoWidth / imgAspect;
 
@@ -140,7 +157,7 @@ export async function generateProjectReport(
           // Center horizontally
           const xOffset = margin + (photoWidth - finalWidth) / 2;
 
-          pdf.addImage(imageData, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
+          pdf.addImage(imageResult.data, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
 
           // Photo info below image
           const infoY = yOffset + finalHeight + 8;
