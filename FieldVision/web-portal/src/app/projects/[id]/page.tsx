@@ -63,6 +63,8 @@ export default function ProjectDetailPage() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const [batchMode, setBatchMode] = useState(false);
+  const [batchPhotos, setBatchPhotos] = useState<File[]>([]);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -100,16 +102,17 @@ export default function ProjectDetailPage() {
     }
   }
 
-  async function handleFileUpload(files: FileList | null) {
+  async function handleFileUpload(files: FileList | File[] | null) {
     if (!files || files.length === 0) return;
+    const fileArray = Array.from(files);
 
     setIsUploading(true);
     setUploadProgress(0);
 
-    const totalFiles = files.length;
+    const totalFiles = fileArray.length;
     let uploadedFiles = 0;
 
-    for (const file of Array.from(files)) {
+    for (const file of fileArray) {
       try {
         // Sanitize filename - replace spaces and special chars
         const sanitizedName = file.name
@@ -264,11 +267,18 @@ export default function ProjectDetailPage() {
 
             <div className="flex items-center gap-2">
               <button
+                onClick={() => setBatchMode(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-fieldvision-orange text-white rounded-lg font-semibold hover:bg-fieldvision-orange/90 transition-colors"
+              >
+                <Camera className="w-5 h-5" />
+                <span className="hidden sm:inline">Batch Capture</span>
+              </button>
+              <button
                 onClick={() => cameraInputRef.current?.click()}
                 className="flex items-center gap-2 px-4 py-2 bg-fieldvision-blue text-white rounded-lg font-semibold hover:bg-fieldvision-blue/90 transition-colors"
               >
                 <Camera className="w-5 h-5" />
-                <span className="hidden sm:inline">Capture</span>
+                <span className="hidden sm:inline">Single</span>
               </button>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -441,6 +451,94 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Batch Capture Modal */}
+      {batchMode && (
+        <div className="fixed inset-0 z-50 bg-black flex flex-col">
+          <div className="flex items-center justify-between p-4 bg-black/80">
+            <div className="text-white">
+              <span className="text-lg font-semibold">{batchPhotos.length} photos</span>
+              <span className="text-white/60 ml-2">ready to upload</span>
+            </div>
+            <div className="flex items-center gap-3">
+              {batchPhotos.length > 0 && (
+                <button
+                  onClick={async () => {
+                    setBatchMode(false);
+                    await handleFileUpload(
+                      Object.assign(batchPhotos, { length: batchPhotos.length, item: (i: number) => batchPhotos[i] }) as unknown as FileList
+                    );
+                    setBatchPhotos([]);
+                  }}
+                  className="px-4 py-2 bg-fieldvision-orange text-white rounded-lg font-semibold hover:bg-fieldvision-orange/90"
+                >
+                  Upload All ({batchPhotos.length})
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  setBatchMode(false);
+                  setBatchPhotos([]);
+                }}
+                className="p-2 text-white hover:bg-white/10 rounded-full"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          <div className="flex-1 flex flex-col items-center justify-center p-4">
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              id="batch-camera"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setBatchPhotos((prev) => [...prev, file]);
+                  // Reset input so same file can be selected again
+                  e.target.value = '';
+                }
+              }}
+            />
+
+            <button
+              onClick={() => document.getElementById('batch-camera')?.click()}
+              className="w-24 h-24 rounded-full bg-white flex items-center justify-center shadow-lg hover:scale-105 transition-transform mb-8"
+            >
+              <Camera className="w-12 h-12 text-fieldvision-blue" />
+            </button>
+
+            <p className="text-white/80 text-center mb-4">
+              Tap the button to capture photos.<br />
+              Upload all when done.
+            </p>
+
+            {/* Thumbnail strip of captured photos */}
+            {batchPhotos.length > 0 && (
+              <div className="flex gap-2 overflow-x-auto max-w-full p-2">
+                {batchPhotos.map((file, index) => (
+                  <div key={index} className="relative flex-shrink-0">
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={`Capture ${index + 1}`}
+                      className="w-16 h-16 object-cover rounded-lg"
+                    />
+                    <button
+                      onClick={() => setBatchPhotos((prev) => prev.filter((_, i) => i !== index))}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Photo lightbox */}
       {selectedPhoto && (
