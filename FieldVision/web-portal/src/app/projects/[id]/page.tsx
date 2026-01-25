@@ -111,10 +111,15 @@ export default function ProjectDetailPage() {
 
     for (const file of Array.from(files)) {
       try {
+        // Sanitize filename - replace spaces and special chars
+        const sanitizedName = file.name
+          .replace(/\s+/g, '_')
+          .replace(/[^a-zA-Z0-9._-]/g, '_');
+
         // Get presigned URL
         const { uploadUrl, mediaUrl } = await getUploadUrl(
           projectId,
-          file.name,
+          sanitizedName,
           file.type
         );
 
