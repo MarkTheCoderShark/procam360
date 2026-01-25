@@ -93,37 +93,33 @@ export async function generateProjectReport(
     pdf.text('Generated with FieldVision', margin, pageHeight - 15);
   }
 
-  // Photo pages
+  // Photo pages - 1 photo per page, full width
   async function addPhotoPages() {
-    const photoHeight = photosPerPage === 1 ? 160 : 100;
+    const maxPhotoHeight = pageHeight - 60; // Leave room for header and footer
     const photoWidth = contentWidth;
 
     for (let i = 0; i < photos.length; i++) {
       const photo = photos[i];
-      const isFirstOnPage = i % photosPerPage === 0;
 
-      if (isFirstOnPage) {
-        pdf.addPage();
+      pdf.addPage();
 
-        // Page header
-        pdf.setFillColor(...primaryColor);
-        pdf.rect(0, 0, pageWidth, 20, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(project.name, margin, 13);
-        pdf.setFont('helvetica', 'normal');
-        pdf.text(`Page ${Math.floor(i / photosPerPage) + 2}`, pageWidth - margin - 20, 13);
-      }
+      // Page header
+      pdf.setFillColor(...primaryColor);
+      pdf.rect(0, 0, pageWidth, 20, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(project.name, margin, 13);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Photo ${i + 1} of ${photos.length}`, pageWidth - margin - 35, 13);
 
-      const photoIndex = i % photosPerPage;
-      const yOffset = 30 + photoIndex * (photoHeight + 30);
+      const yOffset = 30;
 
       // Load and add photo
       const imageData = await loadImageAsBase64(photo.remoteUrl);
       if (imageData) {
         try {
-          // Calculate aspect ratio to fit
+          // Calculate aspect ratio to fit - maximize width
           const img = new Image();
           img.src = imageData;
           await new Promise((resolve) => {
@@ -135,46 +131,53 @@ export async function generateProjectReport(
           let finalWidth = photoWidth;
           let finalHeight = photoWidth / imgAspect;
 
-          if (finalHeight > photoHeight) {
-            finalHeight = photoHeight;
-            finalWidth = photoHeight * imgAspect;
+          // If too tall, scale down to fit
+          if (finalHeight > maxPhotoHeight - 30) {
+            finalHeight = maxPhotoHeight - 30;
+            finalWidth = finalHeight * imgAspect;
           }
 
+          // Center horizontally
           const xOffset = margin + (photoWidth - finalWidth) / 2;
 
           pdf.addImage(imageData, 'JPEG', xOffset, yOffset, finalWidth, finalHeight);
+
+          // Photo info below image
+          const infoY = yOffset + finalHeight + 8;
+          pdf.setFontSize(11);
+          pdf.setTextColor(80, 80, 80);
+
+          let infoText = '';
+
+          if (includeDate) {
+            infoText += format(new Date(photo.capturedAt), 'MMMM d, yyyy \'at\' h:mm a');
+          }
+
+          if (includeLocation && photo.latitude && photo.longitude) {
+            if (infoText) infoText += '  •  ';
+            infoText += `GPS: ${photo.latitude.toFixed(6)}, ${photo.longitude.toFixed(6)}`;
+          }
+
+          if (infoText) {
+            pdf.text(infoText, margin, infoY);
+          }
+
+          if (includeNotes && photo.note) {
+            pdf.setFontSize(10);
+            pdf.setTextColor(60, 60, 60);
+            pdf.setFont('helvetica', 'italic');
+            const noteLines = pdf.splitTextToSize(`"${photo.note}"`, contentWidth);
+            pdf.text(noteLines.slice(0, 3), margin, infoY + 7);
+            pdf.setFont('helvetica', 'normal');
+          }
         } catch (e) {
           // If image fails, add placeholder
-          pdf.setFillColor(240, 240, 240);
-          pdf.rect(margin, yOffset, photoWidth, photoHeight, 'F');
+          pdf.setFillColor(245, 245, 245);
+          pdf.rect(margin, yOffset, photoWidth, 150, 'F');
           pdf.setTextColor(150, 150, 150);
-          pdf.setFontSize(12);
-          pdf.text('Image could not be loaded', margin + photoWidth / 2 - 30, yOffset + photoHeight / 2);
+          pdf.setFontSize(14);
+          pdf.text('Image could not be loaded', pageWidth / 2 - 35, yOffset + 75);
         }
-      }
-
-      // Photo info
-      const infoY = yOffset + photoHeight + 5;
-      pdf.setFontSize(10);
-      pdf.setTextColor(80, 80, 80);
-
-      let infoText = `Photo ${i + 1}`;
-
-      if (includeDate) {
-        infoText += ` | ${format(new Date(photo.capturedAt), 'MMM d, yyyy h:mm a')}`;
-      }
-
-      if (includeLocation && photo.latitude && photo.longitude) {
-        infoText += ` | ${photo.latitude.toFixed(4)}, ${photo.longitude.toFixed(4)}`;
-      }
-
-      pdf.text(infoText, margin, infoY);
-
-      if (includeNotes && photo.note) {
-        pdf.setFontSize(9);
-        pdf.setTextColor(100, 100, 100);
-        const noteLines = pdf.splitTextToSize(`Note: ${photo.note}`, contentWidth);
-        pdf.text(noteLines.slice(0, 2), margin, infoY + 5);
       }
     }
   }
