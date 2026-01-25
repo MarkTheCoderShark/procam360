@@ -72,7 +72,11 @@ class SupabaseStorageService implements StorageService {
     fileName: string,
     folder: string = 'photos'
   ): Promise<{ signedUrl: string; path: string; publicUrl: string }> {
-    const path = `${folder}/${Date.now()}-${fileName}`;
+    // Sanitize filename: replace spaces and special chars with underscores
+    const sanitizedFileName = fileName
+      .replace(/\s+/g, '_')
+      .replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${folder}/${Date.now()}-${sanitizedFileName}`;
 
     const { data, error } = await this.supabase.storage
       .from(STORAGE_BUCKET)
