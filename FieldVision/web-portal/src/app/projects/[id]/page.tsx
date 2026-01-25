@@ -34,7 +34,9 @@ import {
   Share2,
   MoreVertical,
   Calendar,
+  FileText,
 } from 'lucide-react';
+import { generateProjectReport, downloadReport } from '@/lib/report-generator';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -65,6 +67,9 @@ export default function ProjectDetailPage() {
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [batchPhotos, setBatchPhotos] = useState<File[]>([]);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  const [showReportOptions, setShowReportOptions] = useState(false);
+  const [reportCompanyName, setReportCompanyName] = useState('');
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
@@ -265,7 +270,7 @@ export default function ProjectDetailPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <button
                 onClick={() => setBatchMode(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-fieldvision-orange text-white rounded-lg font-semibold hover:bg-fieldvision-orange/90 transition-colors"
@@ -287,6 +292,20 @@ export default function ProjectDetailPage() {
                 <Upload className="w-5 h-5" />
                 <span className="hidden sm:inline">Upload</span>
               </button>
+              {photos.length > 0 && (
+                <button
+                  onClick={() => setShowReportOptions(true)}
+                  disabled={isGeneratingReport}
+                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  {isGeneratingReport ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <FileText className="w-5 h-5" />
+                  )}
+                  <span className="hidden sm:inline">Report</span>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -451,6 +470,72 @@ export default function ProjectDetailPage() {
           </div>
         )}
       </div>
+
+      {/* Report Options Modal */}
+      {showReportOptions && project && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h3 className="text-xl font-bold mb-4">Generate PDF Report</h3>
+
+            <div className="space-y-4 mb-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Company / Inspector Name
+                </label>
+                <input
+                  type="text"
+                  value={reportCompanyName}
+                  onChange={(e) => setReportCompanyName(e.target.value)}
+                  placeholder="Your Company Name"
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-fieldvision-blue"
+                />
+              </div>
+
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  <strong>Report will include:</strong>
+                </p>
+                <ul className="text-sm text-gray-600 mt-2 space-y-1">
+                  <li>• Cover page with project details</li>
+                  <li>• All {photos.length} photos</li>
+                  <li>• Photo dates and locations</li>
+                  <li>• Notes for each photo</li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReportOptions(false)}
+                className="flex-1 py-2 border rounded-lg text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  setShowReportOptions(false);
+                  setIsGeneratingReport(true);
+                  try {
+                    const blob = await generateProjectReport(project, photos, {
+                      companyName: reportCompanyName || 'FieldVision',
+                    });
+                    const filename = `${project.name.replace(/\s+/g, '_')}_Report_${format(new Date(), 'yyyy-MM-dd')}.pdf`;
+                    downloadReport(blob, filename);
+                  } catch (err) {
+                    console.error('Failed to generate report:', err);
+                    alert('Failed to generate report. Please try again.');
+                  } finally {
+                    setIsGeneratingReport(false);
+                  }
+                }}
+                className="flex-1 py-2 bg-fieldvision-blue text-white rounded-lg hover:bg-fieldvision-blue/90 font-semibold"
+              >
+                Generate PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Batch Capture Modal */}
       {batchMode && (
