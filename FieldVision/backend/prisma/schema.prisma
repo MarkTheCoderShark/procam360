@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider  = "postgresql"
   url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
@@ -27,6 +28,8 @@ model User {
   refreshTokens         RefreshToken[]
   deviceTokens          DeviceToken[]
   notificationPrefs     NotificationPreferences?
+  teamContacts          TeamContact[]     @relation("TeamContacts")
+  contactOf             TeamContact[]     @relation("ContactOf")
 
   @@map("users")
 }
@@ -200,4 +203,18 @@ model NotificationPreferences {
   syncComplete   Boolean @default(false)
 
   @@map("notification_preferences")
+}
+
+model TeamContact {
+  id          String     @id @default(uuid())
+  ownerId     String
+  owner       User       @relation("TeamContacts", fields: [ownerId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     User       @relation("ContactOf", fields: [contactId], references: [id], onDelete: Cascade)
+  nickname    String?
+  defaultRole MemberRole @default(CREW)
+  createdAt   DateTime   @default(now())
+
+  @@unique([ownerId, contactId])
+  @@map("team_contacts")
 }

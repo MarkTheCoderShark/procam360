@@ -5,7 +5,7 @@ struct ProjectDetailView: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
 
-    @State private var selectedView: ProjectViewType = .folders
+    @State private var selectedView: ProjectViewType = .photos
     @State private var showingCamera = false
     @State private var showingShareSheet = false
     @State private var showingEditProject = false
@@ -217,8 +217,8 @@ struct ProjectDetailView: View {
     @ViewBuilder
     private var selectedViewContent: some View {
         switch selectedView {
-        case .folders:
-            FolderGridView(project: project)
+        case .photos:
+            PhotoGridView(project: project)
         case .timeline:
             TimelineView(project: project)
         case .map:
@@ -228,13 +228,13 @@ struct ProjectDetailView: View {
 }
 
 enum ProjectViewType: String, CaseIterable {
-    case folders
+    case photos
     case timeline
     case map
 
     var title: String {
         switch self {
-        case .folders: return "Folders"
+        case .photos: return "Photos"
         case .timeline: return "Timeline"
         case .map: return "Map"
         }
@@ -242,7 +242,7 @@ enum ProjectViewType: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .folders: return "folder"
+        case .photos: return "photo.on.rectangle"
         case .timeline: return "clock"
         case .map: return "map"
         }

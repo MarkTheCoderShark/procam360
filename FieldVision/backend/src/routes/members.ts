@@ -11,6 +11,13 @@ const updateRoleSchema = z.object({
   role: z.enum(['ADMIN', 'CREW', 'VIEWER']),
 });
 
+const bulkInviteSchema = z.object({
+  invites: z.array(z.object({
+    email: z.string().email(),
+    role: z.enum(['ADMIN', 'CREW', 'VIEWER']).default('CREW'),
+  })).min(1).max(50),
+});
+
 export async function memberRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', authenticate);
 
@@ -73,7 +80,7 @@ export async function memberRoutes(fastify: FastifyInstance) {
     });
 
     if (!userToInvite) {
-      return reply.status(404).send({ 
+      return reply.status(404).send({
         error: 'User not found. They need to create an account first.',
         code: 'USER_NOT_FOUND'
       });
@@ -233,5 +240,133 @@ export async function memberRoutes(fastify: FastifyInstance) {
     await prisma.projectMember.delete({ where: { id: memberId } });
 
     return { success: true };
+  });
+
+  // POST /:projectId/members/bulk - Invite multiple members at once
+  fastify.post('/:projectId/members/bulk', async (request: FastifyRequest, reply: FastifyReply) => {
+    const { projectId } = request.params as { projectId: string };
+    const body = bulkInviteSchema.parse(request.body);
+    const prisma = (fastify as any).prisma;
+    const userId = (request as any).userId;
+
+    // Check if user is admin of the project
+    const adminMember = await prisma.projectMember.findFirst({
+      where: { projectId, userId, role: 'ADMIN' },
+    });
+
+    if (!adminMember) {
+      return reply.status(403).send({ error: 'Only admins can invite members' });
+    }
+
+    const project = await prisma.project.findUnique({
+      where: { id: projectId },
+      select: { name: true },
+    });
+
+    const inviter = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { name: true },
+    });
+
+    const results: Array<{
+      email: string;
+      success: boolean;
+      error?: string;
+      member?: any;
+    }> = [];
+
+    for (const invite of body.invites) {
+      try {
+        const userToInvite = await prisma.user.findUnique({
+          where: { email: invite.email },
+        });
+
+        if (!userToInvite) {
+          results.push({
+            email: invite.email,
+            success: false,
+            error: 'User not found. They need to create an account first.',
+          });
+          continue;
+        }
+
+        const existingMember = await prisma.projectMember.findFirst({
+          where: { projectId, userId: userToInvite.id },
+        });
+
+        if (existingMember) {
+          results.push({
+            email: invite.email,
+            success: false,
+            error: 'User is already a member of this project',
+          });
+          continue;
+        }
+
+        const newMember = await prisma.projectMember.create({
+          data: {
+            projectId,
+            userId: userToInvite.id,
+            role: invite.role,
+          },
+          include: {
+            user: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                avatarUrl: true,
+              },
+            },
+          },
+        });
+
+        // Send push notification
+        const pushService = (fastify as any).pushService;
+        if (pushService && project && inviter) {
+          await pushService.sendToUser(userToInvite.id, {
+            title: 'Project Invitation',
+            body: `${inviter.name} invited you to join "${project.name}"`,
+            data: {
+              type: 'project_invite',
+              projectId,
+              projectName: project.name,
+            },
+          });
+        }
+
+        results.push({
+          email: invite.email,
+          success: true,
+          member: {
+            id: newMember.id,
+            userId: newMember.user.id,
+            name: newMember.user.name,
+            email: newMember.user.email,
+            avatarUrl: newMember.user.avatarUrl,
+            role: newMember.role,
+            invitedAt: newMember.invitedAt,
+          },
+        });
+      } catch (err) {
+        results.push({
+          email: invite.email,
+          success: false,
+          error: 'Failed to invite member',
+        });
+      }
+    }
+
+    const successCount = results.filter(r => r.success).length;
+    const failureCount = results.filter(r => !r.success).length;
+
+    return {
+      summary: {
+        total: body.invites.length,
+        successful: successCount,
+        failed: failureCount,
+      },
+      results,
+    };
   });
 }

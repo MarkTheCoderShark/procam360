@@ -54,7 +54,7 @@ struct ProjectListView: View {
                             .foregroundStyle(FVColors.Fallback.primary)
                     }
                 }
-                
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
                         Button {
@@ -84,7 +84,11 @@ struct ProjectListView: View {
                 SearchView()
             }
             .refreshable {
-                await viewModel.refreshProjects()
+                await viewModel.refreshProjects(modelContext: modelContext)
+            }
+            .task {
+                // Fetch projects from server on first load
+                await viewModel.refreshProjects(modelContext: modelContext)
             }
             .navigationDestination(for: Project.self) { project in
                 ProjectDetailView(project: project)

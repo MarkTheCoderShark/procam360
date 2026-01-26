@@ -1,5 +1,6 @@
 import Foundation
-import RevenueCat
+// RevenueCat temporarily disabled - uncomment when ready for production
+// import RevenueCat
 
 enum SubscriptionTier: String, CaseIterable {
     case free = "free"
@@ -38,201 +39,55 @@ enum SubscriptionTier: String, CaseIterable {
 }
 
 @MainActor
-final class PurchaseService: NSObject, ObservableObject {
+final class PurchaseService: ObservableObject {
     static let shared = PurchaseService()
 
     static let entitlementIdentifier = "Proflow Inspect Pro"
-    // TODO: Replace with your production RevenueCat API key from dashboard (starts with appl_)
-    static let apiKey = "appl_OVNNLuZhIReVVESEfewaBCijaBL"
 
     @Published private(set) var isConfigured = false
-    @Published private(set) var customerInfo: CustomerInfo?
-    @Published private(set) var offerings: Offerings?
     @Published private(set) var isLoading = false
     @Published private(set) var errorMessage: String?
 
+    // For now, everyone gets Pro access while RevenueCat is disabled
     var isPro: Bool {
-        customerInfo?.entitlements[Self.entitlementIdentifier]?.isActive == true
+        true // Grant Pro access while purchases are disabled
     }
 
     var subscriptionStatus: SubscriptionTier {
-        guard let entitlement = customerInfo?.entitlements[Self.entitlementIdentifier],
-              entitlement.isActive else {
-            return .free
-        }
-
-        if entitlement.productIdentifier.contains("annual") || entitlement.productIdentifier.contains("yearly") {
-            return .proAnnual
-        }
-        return .pro
+        .pro // Grant Pro access while purchases are disabled
     }
 
-    var currentOffering: Offering? {
-        offerings?.current
-    }
-
-    var availablePackages: [Package] {
-        currentOffering?.availablePackages ?? []
-    }
-
-    var monthlyPackage: Package? {
-        currentOffering?.monthly
-    }
-
-    var annualPackage: Package? {
-        currentOffering?.annual
-    }
-
-    private override init() {
-        super.init()
-    }
+    private init() {}
 
     func configure() {
-        // RevenueCat disabled for now - enable when ready with production API key
-        print("RevenueCat disabled - skipping configuration")
+        // RevenueCat disabled for TestFlight testing
+        print("PurchaseService: RevenueCat disabled - granting Pro access")
         isConfigured = false
-
-        // TODO: Uncomment below when RevenueCat is set up with production API key (appl_...)
-        /*
-        #if DEBUG
-        Purchases.logLevel = .debug
-        #endif
-
-        guard !Self.apiKey.isEmpty else {
-            print("RevenueCat API key not configured")
-            return
-        }
-
-        do {
-            let configuration = Configuration.Builder(withAPIKey: Self.apiKey)
-                .with(storeKitVersion: .storeKit2)
-                .build()
-
-            Purchases.configure(with: configuration)
-            Purchases.shared.delegate = self
-            isConfigured = true
-
-            Task {
-                await loadOfferings()
-                await refreshCustomerInfo()
-            }
-
-            listenForCustomerInfoUpdates()
-        } catch {
-            print("Failed to configure RevenueCat: \(error)")
-            isConfigured = false
-        }
-        */
     }
 
     func loadOfferings() async {
-        guard isConfigured else { return }
-
-        isLoading = true
-        errorMessage = nil
-
-        do {
-            offerings = try await Purchases.shared.offerings()
-        } catch {
-            errorMessage = "Failed to load offerings: \(error.localizedDescription)"
-        }
-
-        isLoading = false
+        // No-op while RevenueCat is disabled
     }
 
     func refreshCustomerInfo() async {
-        guard isConfigured else { return }
-
-        do {
-            customerInfo = try await Purchases.shared.customerInfo()
-        } catch {
-            errorMessage = "Failed to get customer info: \(error.localizedDescription)"
-        }
+        // No-op while RevenueCat is disabled
     }
 
-    func purchase(_ package: Package) async throws -> Bool {
-        guard isConfigured else {
-            errorMessage = "Purchases not configured"
-            return false
-        }
-
-        isLoading = true
-        errorMessage = nil
-
-        defer { isLoading = false }
-
-        do {
-            let result = try await Purchases.shared.purchase(package: package)
-
-            if result.userCancelled {
-                return false
-            }
-
-            customerInfo = result.customerInfo
-            return isPro
-        } catch {
-            errorMessage = "Purchase failed: \(error.localizedDescription)"
-            throw error
-        }
+    func purchase(_ packageId: String) async throws -> Bool {
+        errorMessage = "Purchases not available in this build"
+        return false
     }
 
     func restorePurchases() async throws {
-        guard isConfigured else {
-            errorMessage = "Purchases not configured"
-            return
-        }
-
-        isLoading = true
-        errorMessage = nil
-
-        defer { isLoading = false }
-
-        do {
-            customerInfo = try await Purchases.shared.restorePurchases()
-        } catch {
-            errorMessage = "Restore failed: \(error.localizedDescription)"
-            throw error
-        }
+        errorMessage = "Purchases not available in this build"
     }
 
     func login(userId: String) async throws {
-        guard isConfigured else { return }
-        let (customerInfo, _) = try await Purchases.shared.logIn(userId)
-        self.customerInfo = customerInfo
+        // No-op while RevenueCat is disabled
     }
 
     func logout() async throws {
-        guard isConfigured else { return }
-        customerInfo = try await Purchases.shared.logOut()
-    }
-
-    private func listenForCustomerInfoUpdates() {
-        guard isConfigured else { return }
-        Task {
-            for await info in Purchases.shared.customerInfoStream {
-                await MainActor.run {
-                    self.customerInfo = info
-                }
-            }
-        }
-    }
-}
-
-extension PurchaseService: PurchasesDelegate {
-    nonisolated func purchases(_ purchases: Purchases, receivedUpdated customerInfo: CustomerInfo) {
-        Task { @MainActor in
-            self.customerInfo = customerInfo
-        }
-    }
-
-    nonisolated func purchases(_ purchases: Purchases, readyForPromotedProduct product: StoreProduct, purchase startPurchase: @escaping StartPurchaseBlock) {
-        startPurchase { transaction, customerInfo, error, cancelled in
-            Task { @MainActor in
-                if let customerInfo = customerInfo {
-                    self.customerInfo = customerInfo
-                }
-            }
-        }
+        // No-op while RevenueCat is disabled
     }
 }
 

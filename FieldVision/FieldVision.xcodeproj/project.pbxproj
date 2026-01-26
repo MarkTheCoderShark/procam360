@@ -60,6 +60,7 @@
 		NEW006 /* ProjectTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF006 /* ProjectTemplate.swift */; };
 		NEW007 /* PurchaseService.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF007 /* PurchaseService.swift */; };
 		NEW008 /* PaywallView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF008 /* PaywallView.swift */; };
+		NEW009 /* PhotoGridView.swift in Sources */ = {isa = PBXBuildFile; fileRef = NEWREF009 /* PhotoGridView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -115,6 +116,7 @@
 		NEWREF006 /* ProjectTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProjectTemplate.swift; sourceTree = "<group>"; };
 		NEWREF007 /* PurchaseService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PurchaseService.swift; sourceTree = "<group>"; };
 		NEWREF008 /* PaywallView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaywallView.swift; sourceTree = "<group>"; };
+		NEWREF009 /* PhotoGridView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoGridView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -375,6 +377,7 @@
 			children = (
 				F1F6A6436EB7499AA76F31BA /* FolderGridView.swift */,
 				4AA2BF0520544D5A8A167791 /* PhotoDetailView.swift */,
+				NEWREF009 /* PhotoGridView.swift */,
 				1B4832EDF7AE49C6B7D2DC5F /* PhotoMapView.swift */,
 				1BFF6E930C5443838530C220 /* TimelineView.swift */,
 			);
@@ -565,6 +568,7 @@
 				870732C494F34EDA8A7C76D8 /* FVTextField.swift in Sources */,
 				665ACDBC134144728B9E468B /* FolderGridView.swift in Sources */,
 				CC9EC1E03F52436B9A952281 /* PhotoDetailView.swift in Sources */,
+				NEW009 /* PhotoGridView.swift in Sources */,
 				0209C6D4B64847FD84286708 /* PhotoMapView.swift in Sources */,
 				0B13DB9B244D47AABB5D1F7B /* TimelineView.swift in Sources */,
 				029E3E6AE97742A3A6025CA5 /* CreateProjectView.swift in Sources */,
@@ -591,7 +595,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = 57K43762P3;
 				INFOPLIST_FILE = FieldVision/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = ProCam360;
@@ -653,7 +657,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				DEVELOPMENT_TEAM = 57K43762P3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",

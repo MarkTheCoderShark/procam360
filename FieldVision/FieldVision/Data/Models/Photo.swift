@@ -6,33 +6,33 @@ final class Photo {
     @Attribute(.unique) var id: UUID
     var uploaderId: UUID
     var uploaderName: String?
-    
+
     var capturedAt: Date
     var latitude: Double
     var longitude: Double
-    
+
     var mediaType: MediaType
     var localPath: String
     var remoteUrl: String?
     var thumbnailLocalPath: String?
     var thumbnailRemoteUrl: String?
-    
+
     var note: String?
     var voiceNoteLocalPath: String?
     var voiceNoteRemoteUrl: String?
     var voiceNoteTranscription: String?
-    
+
     var syncStatus: SyncStatus
     var remoteId: String?
     var createdAt: Date
     var updatedAt: Date
-    
+
     var project: Project?
     var folder: Folder?
-    
+
     @Relationship(deleteRule: .cascade, inverse: \Comment.photo)
     var comments: [Comment] = []
-    
+
     init(
         id: UUID = UUID(),
         uploaderId: UUID,
@@ -83,7 +83,7 @@ final class Photo {
 enum MediaType: String, Codable {
     case photo
     case video
-    
+
     var iconName: String {
         switch self {
         case .photo: return "photo"
@@ -96,33 +96,46 @@ extension Photo {
     var hasVoiceNote: Bool {
         voiceNoteLocalPath != nil || voiceNoteRemoteUrl != nil
     }
-    
+
     var hasNote: Bool {
         (note != nil && !note!.isEmpty) || (voiceNoteTranscription != nil && !voiceNoteTranscription!.isEmpty)
     }
-    
+
     var displayNote: String? {
         if let note = note, !note.isEmpty {
             return note
         }
         return voiceNoteTranscription
     }
-    
+
     var commentCount: Int { comments.count }
-    
+
     var formattedDate: String {
         capturedAt.formatted(date: .abbreviated, time: .shortened)
     }
-    
+
     var localURL: URL? {
-        guard !localPath.isEmpty else { return nil }
-        return URL(fileURLWithPath: localPath)
+        // First try local file
+        if !localPath.isEmpty {
+            return URL(fileURLWithPath: localPath)
+        }
+        // Fall back to remote URL for server-synced photos
+        if let remoteUrl = remoteUrl, let url = URL(string: remoteUrl) {
+            return url
+        }
+        return nil
     }
-    
+
     var thumbnailURL: URL? {
+        // First try local thumbnail
         if let thumbnailLocalPath = thumbnailLocalPath, !thumbnailLocalPath.isEmpty {
             return URL(fileURLWithPath: thumbnailLocalPath)
         }
+        // Then try remote thumbnail
+        if let thumbnailRemoteUrl = thumbnailRemoteUrl, let url = URL(string: thumbnailRemoteUrl) {
+            return url
+        }
+        // Fall back to main image URL
         return localURL
     }
 }

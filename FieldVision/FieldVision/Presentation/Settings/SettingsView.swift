@@ -1,5 +1,6 @@
 import SwiftUI
-import RevenueCatUI
+// RevenueCatUI temporarily disabled
+// import RevenueCatUI
 
 struct SettingsView: View {
     @EnvironmentObject var authViewModel: AuthViewModel
@@ -25,7 +26,7 @@ struct SettingsView: View {
                 Section {
                     subscriptionRow
                 }
-                
+
                 Section("Preferences") {
                     NavigationLink {
                         CameraSettingsView()
@@ -120,12 +121,14 @@ struct SettingsView: View {
             .sheet(isPresented: $showingPaywall) {
                 PaywallView()
             }
-            .presentCustomerCenter(isPresented: $showingCustomerCenter)
+            // Customer center disabled while RevenueCat is disabled
+            // .presentCustomerCenter(isPresented: $showingCustomerCenter)
         }
     }
-    
+
     private var subscriptionRow: some View {
         Button {
+            // Since RevenueCat is disabled and everyone has Pro, just show paywall info
             if purchaseService.isPro {
                 showingCustomerCenter = true
             } else {
@@ -137,23 +140,23 @@ struct SettingsView: View {
                     Circle()
                         .fill(purchaseService.isPro ? Color.yellow.opacity(0.2) : FVColors.Fallback.primary.opacity(0.2))
                         .frame(width: 44, height: 44)
-                    
+
                     Image(systemName: purchaseService.isPro ? "crown.fill" : "star.fill")
                         .foregroundStyle(purchaseService.isPro ? .yellow : FVColors.Fallback.primary)
                 }
-                
+
                 VStack(alignment: .leading, spacing: FVSpacing.xxxs) {
                     Text(purchaseService.isPro ? "Proflow Inspect Pro" : "Upgrade to Pro")
                         .font(FVTypography.headline)
                         .foregroundStyle(FVColors.label)
-                    
+
                     Text(purchaseService.isPro ? "Manage subscription" : "Unlock all features")
                         .font(FVTypography.caption)
                         .foregroundStyle(FVColors.secondaryLabel)
                 }
-                
+
                 Spacer()
-                
+
                 Image(systemName: "chevron.right")
                     .font(.caption)
                     .foregroundStyle(FVColors.tertiaryLabel)
@@ -255,7 +258,7 @@ struct AccountSettingsView: View {
     @State private var isDeleting = false
     @State private var deleteError: String?
     @State private var showingError = false
-    
+
     private let apiClient = APIClient.shared
 
     var body: some View {
@@ -327,10 +330,10 @@ struct AccountSettingsView: View {
             Text(deleteError ?? "An unknown error occurred")
         }
     }
-    
+
     private func deleteAccount() async {
         isDeleting = true
-        
+
         do {
             try await apiClient.deleteAccount()
             await MainActor.run {
@@ -343,7 +346,7 @@ struct AccountSettingsView: View {
             deleteError = error.localizedDescription
             showingError = true
         }
-        
+
         isDeleting = false
     }
 }
@@ -357,7 +360,7 @@ struct ChangePasswordView: View {
     @State private var showingError = false
     @State private var errorMessage = ""
     @State private var showingSuccess = false
-    
+
     private let apiClient = APIClient.shared
     private let keychainService = KeychainService.shared
 
@@ -371,14 +374,14 @@ struct ChangePasswordView: View {
                 SecureField("Confirm New Password", text: $confirmPassword)
                     .textContentType(.newPassword)
             }
-            
+
             Section {
                 if newPassword.count > 0 && newPassword.count < 8 {
                     Label("Password must be at least 8 characters", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(FVColors.warning)
                         .font(FVTypography.caption)
                 }
-                
+
                 if !confirmPassword.isEmpty && newPassword != confirmPassword {
                     Label("Passwords don't match", systemImage: "exclamationmark.triangle")
                         .foregroundStyle(FVColors.warning)
@@ -418,25 +421,25 @@ struct ChangePasswordView: View {
             Text("Your password has been updated successfully.")
         }
     }
-    
+
     private var isFormValid: Bool {
-        !currentPassword.isEmpty && 
-        newPassword.count >= 8 && 
+        !currentPassword.isEmpty &&
+        newPassword.count >= 8 &&
         newPassword == confirmPassword
     }
 
     private func updatePassword() async {
         isLoading = true
-        
+
         do {
             let response = try await apiClient.changePassword(
                 currentPassword: currentPassword,
                 newPassword: newPassword
             )
-            
+
             keychainService.setAccessToken(response.accessToken)
             keychainService.setRefreshToken(response.refreshToken)
-            
+
             showingSuccess = true
         } catch let error as APIError {
             errorMessage = error.localizedDescription
@@ -445,7 +448,7 @@ struct ChangePasswordView: View {
             errorMessage = error.localizedDescription
             showingError = true
         }
-        
+
         isLoading = false
     }
 }

@@ -14,10 +14,14 @@ import {
   createPhoto,
   createFolder,
   deletePhoto,
+  getProjectMembers,
   Project,
   Photo,
   Folder,
+  ProjectMember,
 } from '@/lib/projects-api';
+import { ProjectMembersPanel } from '@/components/ProjectMembersPanel';
+import { ShareWithTeamModal } from '@/components/ShareWithTeamModal';
 import {
   Loader2,
   ArrowLeft,
@@ -35,6 +39,8 @@ import {
   MoreVertical,
   Calendar,
   FileText,
+  Users,
+  UserPlus,
 } from 'lucide-react';
 import { generateProjectReport, downloadReport } from '@/lib/report-generator';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -71,6 +77,11 @@ export default function ProjectDetailPage() {
   const [showReportOptions, setShowReportOptions] = useState(false);
   const [reportCompanyName, setReportCompanyName] = useState('');
 
+  const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [members, setMembers] = useState<ProjectMember[]>([]);
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/login');
@@ -85,12 +96,17 @@ export default function ProjectDetailPage() {
 
   async function loadProjectData() {
     try {
-      const [projectData, photosData] = await Promise.all([
+      const [projectData, photosData, membersData] = await Promise.all([
         getProject(projectId),
         getPhotos(projectId),
+        getProjectMembers(projectId),
       ]);
       setProject(projectData);
       setPhotos(photosData.data);
+      setMembers(membersData);
+      // Check if current user is admin
+      const currentUserMember = membersData.find((m) => m.isCurrentUser);
+      setIsAdmin(currentUserMember?.role === 'ADMIN');
       // Extract unique folders from photos
       const folderMap = new Map<string, Folder>();
       photosData.data.forEach((photo: Photo) => {
@@ -271,6 +287,23 @@ export default function ProjectDetailPage() {
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setShowMembersPanel(true)}
+                className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+              >
+                <Users className="w-5 h-5" />
+                <span className="hidden sm:inline">Members</span>
+                <span className="text-sm text-gray-500">({members.length})</span>
+              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setShowShareModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                >
+                  <UserPlus className="w-5 h-5" />
+                  <span className="hidden sm:inline">Share with Team</span>
+                </button>
+              )}
               <button
                 onClick={() => setBatchMode(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-fieldvision-orange text-white rounded-lg font-semibold hover:bg-fieldvision-orange/90 transition-colors"
@@ -698,6 +731,26 @@ export default function ProjectDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Members Panel */}
+      <ProjectMembersPanel
+        projectId={projectId}
+        isOpen={showMembersPanel}
+        onClose={() => setShowMembersPanel(false)}
+        isAdmin={isAdmin}
+      />
+
+      {/* Share with Team Modal */}
+      {showShareModal && (
+        <ShareWithTeamModal
+          projectId={projectId}
+          existingMemberIds={members.map((m) => m.userId)}
+          onClose={() => setShowShareModal(false)}
+          onMembersAdded={(newMembers) => {
+            setMembers((prev) => [...prev, ...newMembers]);
+          }}
+        />
       )}
     </DashboardLayout>
   );

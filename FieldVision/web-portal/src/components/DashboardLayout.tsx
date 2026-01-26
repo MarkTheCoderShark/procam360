@@ -14,6 +14,7 @@ import {
   Plus,
   User,
   ChevronDown,
+  Users,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -30,6 +31,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   const navigation = [
     { name: 'Projects', href: '/dashboard', icon: FolderOpen },
+    { name: 'Team', href: '/dashboard/team', icon: Users },
   ];
 
   const handleLogout = () => {
@@ -115,15 +117,6 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             ))}
           </nav>
 
-          <div className="p-4 border-t">
-            <Link
-              href="/dashboard/new"
-              className="flex items-center justify-center gap-2 w-full py-2.5 bg-fieldvision-orange text-white rounded-lg font-semibold hover:bg-fieldvision-orange/90 transition-colors"
-            >
-              <Plus className="w-5 h-5" />
-              New Project
-            </Link>
-          </div>
         </div>
       </div>
 

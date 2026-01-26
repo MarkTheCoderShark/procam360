@@ -1,10 +1,11 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
-import RevenueCat
+// RevenueCat temporarily disabled
+// import RevenueCat
 
 @main
-struct FieldVisionApp: App {
+struct ProCam360App: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     let container: ModelContainer
@@ -48,7 +49,7 @@ struct FieldVisionApp: App {
             }
         }
 
-        // Configure RevenueCat after SwiftData
+        // Configure PurchaseService (RevenueCat disabled)
         PurchaseService.shared.configure()
 
         let authVM = AuthViewModel()

@@ -6,7 +6,7 @@ struct CameraView: View {
     let project: Project
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
+
     @StateObject private var viewModel: CameraViewModel
     @StateObject private var purchaseService = PurchaseService.shared
     @State private var showingVoiceNote = false
@@ -15,34 +15,34 @@ struct CameraView: View {
     @State private var lastCapturedPhoto: Photo?
     @State private var showingPaywall = false
     @State private var showingPhotoLimitAlert = false
-    
+
     private let freePhotoLimit = 100
-    
+
     init(project: Project) {
         self.project = project
         _viewModel = StateObject(wrappedValue: CameraViewModel())
     }
-    
+
     private var isAtPhotoLimit: Bool {
         !purchaseService.isPro && project.photos.count >= freePhotoLimit
     }
-    
+
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Color.black.ignoresSafeArea()
-                
+
                 CameraPreviewView(session: viewModel.session)
                     .ignoresSafeArea()
-                
+
                 VStack {
                     topBar
-                    
+
                     Spacer()
-                    
+
                     bottomControls(geometry: geometry)
                 }
-                
+
                 if viewModel.isCapturing {
                     Color.white
                         .ignoresSafeArea()
@@ -83,7 +83,7 @@ struct CameraView: View {
             PaywallView()
         }
     }
-    
+
     private var topBar: some View {
         HStack {
             Button {
@@ -94,9 +94,9 @@ struct CameraView: View {
                     .foregroundStyle(.white)
                     .frame(width: 44, height: 44)
             }
-            
+
             Spacer()
-            
+
             if !viewModel.isOnline {
                 HStack(spacing: FVSpacing.xxs) {
                     Image(systemName: "wifi.slash")
@@ -109,9 +109,9 @@ struct CameraView: View {
                 .background(.ultraThinMaterial)
                 .cornerRadius(FVRadius.full)
             }
-            
+
             Spacer()
-            
+
             Button {
                 viewModel.toggleFlash()
             } label: {
@@ -124,7 +124,7 @@ struct CameraView: View {
         .padding(.horizontal)
         .padding(.top, FVSpacing.sm)
     }
-    
+
     private func bottomControls(geometry: GeometryProxy) -> some View {
         VStack(spacing: FVSpacing.lg) {
             Picker("Mode", selection: $viewModel.captureMode) {
@@ -133,7 +133,7 @@ struct CameraView: View {
             }
             .pickerStyle(.segmented)
             .frame(width: 160)
-            
+
             HStack(spacing: FVSpacing.xxl) {
                 if let lastThumbnail = viewModel.lastCapturedThumbnail, let photo = lastCapturedPhoto {
                     Button {
@@ -155,9 +155,9 @@ struct CameraView: View {
                 } else {
                     Color.clear.frame(width: 50, height: 50)
                 }
-                
+
                 captureButton
-                
+
                 Button {
                     viewModel.switchCamera()
                 } label: {
@@ -172,7 +172,7 @@ struct CameraView: View {
         }
         .padding(.bottom, geometry.safeAreaInsets.bottom + FVSpacing.lg)
     }
-    
+
     private var captureButton: some View {
         Button {
             captureMedia()
@@ -181,7 +181,7 @@ struct CameraView: View {
                 Circle()
                     .stroke(.white, lineWidth: 4)
                     .frame(width: 72, height: 72)
-                
+
                 Circle()
                     .fill(viewModel.captureMode == .video && viewModel.isRecording ? .red : .white)
                     .frame(width: viewModel.captureMode == .video && viewModel.isRecording ? 32 : 60, height: viewModel.captureMode == .video && viewModel.isRecording ? 32 : 60)
@@ -191,21 +191,21 @@ struct CameraView: View {
         }
         .disabled(viewModel.isCapturing)
     }
-    
+
     private func captureMedia() {
         if isAtPhotoLimit {
             showingPhotoLimitAlert = true
             return
         }
-        
+
         if viewModel.captureMode == .photo {
             viewModel.capturePhoto { imageData, metadata in
                 guard let imageData = imageData else { return }
-                
+
                 let photo = savePhoto(imageData: imageData, metadata: metadata)
                 capturedPhoto = photo
                 lastCapturedPhoto = photo
-                
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                     showingVoiceNote = true
                 }
@@ -221,12 +221,12 @@ struct CameraView: View {
             }
         }
     }
-    
+
     private func savePhoto(imageData: Data, metadata: CaptureMetadata) -> Photo {
         let fileName = "\(UUID().uuidString).jpg"
         let localPath = MediaStorage.shared.saveImage(imageData, fileName: fileName)
         let thumbnailPath = MediaStorage.shared.saveThumbnail(imageData, fileName: "thumb_\(fileName)")
-        
+
         let photo = Photo(
             uploaderId: KeychainService.shared.getUserId() ?? UUID(),
             capturedAt: metadata.timestamp,
@@ -237,15 +237,15 @@ struct CameraView: View {
             thumbnailLocalPath: thumbnailPath,
             project: project
         )
-        
+
         modelContext.insert(photo)
         return photo
     }
-    
+
     private func saveVideo(videoURL: URL, metadata: CaptureMetadata) {
         let fileName = "\(UUID().uuidString).mov"
         let localPath = MediaStorage.shared.saveVideo(from: videoURL, fileName: fileName)
-        
+
         let photo = Photo(
             uploaderId: KeychainService.shared.getUserId() ?? UUID(),
             capturedAt: metadata.timestamp,
@@ -255,34 +255,34 @@ struct CameraView: View {
             localPath: localPath,
             project: project
         )
-        
+
         modelContext.insert(photo)
     }
 }
 
 struct CameraPreviewView: UIViewRepresentable {
     let session: AVCaptureSession
-    
-    func makeUIView(context: Context) -> UIView {
-        let view = UIView()
-        let previewLayer = AVCaptureVideoPreviewLayer(session: session)
-        previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.frame = view.bounds
-        view.layer.addSublayer(previewLayer)
-        context.coordinator.previewLayer = previewLayer
+
+    func makeUIView(context: Context) -> PreviewView {
+        let view = PreviewView()
+        view.previewLayer.session = session
+        view.previewLayer.videoGravity = .resizeAspectFill
         return view
     }
-    
-    func updateUIView(_ uiView: UIView, context: Context) {
-        context.coordinator.previewLayer?.frame = uiView.bounds
+
+    func updateUIView(_ uiView: PreviewView, context: Context) {
+        // The PreviewView handles its own layout
     }
-    
-    func makeCoordinator() -> Coordinator {
-        Coordinator()
-    }
-    
-    class Coordinator {
-        var previewLayer: AVCaptureVideoPreviewLayer?
+
+    // Custom UIView that properly handles AVCaptureVideoPreviewLayer layout
+    class PreviewView: UIView {
+        override class var layerClass: AnyClass {
+            AVCaptureVideoPreviewLayer.self
+        }
+
+        var previewLayer: AVCaptureVideoPreviewLayer {
+            layer as! AVCaptureVideoPreviewLayer
+        }
     }
 }
 

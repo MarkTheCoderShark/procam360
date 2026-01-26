@@ -24,13 +24,30 @@ export interface Project {
 export interface ProjectMember {
   id: string;
   userId: string;
-  role: 'ADMIN' | 'EDITOR' | 'VIEWER';
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    avatarUrl: string | null;
-  };
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  role: 'ADMIN' | 'CREW' | 'VIEWER';
+  invitedAt: string;
+  isCurrentUser?: boolean;
+}
+
+export interface TeamContact {
+  id: string;
+  contactId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
+  nickname: string | null;
+  defaultRole: 'ADMIN' | 'CREW' | 'VIEWER';
+  createdAt: string;
+}
+
+export interface Collaborator {
+  userId: string;
+  name: string;
+  email: string;
+  avatarUrl: string | null;
 }
 
 export interface Photo {
@@ -274,6 +291,146 @@ export async function createShareLink(projectId: string, options: {
 
   if (!response.ok) {
     throw new Error('Failed to create share link');
+  }
+
+  return response.json();
+}
+
+// Project Members
+export async function getProjectMembers(projectId: string): Promise<ProjectMember[]> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/members`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch project members');
+  }
+
+  return response.json();
+}
+
+export async function inviteMember(projectId: string, email: string, role: 'ADMIN' | 'CREW' | 'VIEWER' = 'CREW'): Promise<ProjectMember> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/members`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ email, role }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to invite member');
+  }
+
+  return response.json();
+}
+
+export async function updateMemberRole(projectId: string, memberId: string, role: 'ADMIN' | 'CREW' | 'VIEWER'): Promise<ProjectMember> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/members/${memberId}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ role }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update member role');
+  }
+
+  return response.json();
+}
+
+export async function removeMember(projectId: string, memberId: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/members/${memberId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to remove member');
+  }
+}
+
+export async function bulkInviteMembers(projectId: string, invites: Array<{ email: string; role: 'ADMIN' | 'CREW' | 'VIEWER' }>): Promise<{
+  summary: { total: number; successful: number; failed: number };
+  results: Array<{ email: string; success: boolean; error?: string; member?: ProjectMember }>;
+}> {
+  const response = await fetch(`${API_BASE}/projects/${projectId}/members/bulk`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ invites }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to bulk invite members');
+  }
+
+  return response.json();
+}
+
+// Team Contacts
+export async function getTeamContacts(): Promise<TeamContact[]> {
+  const response = await fetch(`${API_BASE}/team/contacts`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch team contacts');
+  }
+
+  return response.json();
+}
+
+export async function addTeamContact(email: string, nickname?: string, defaultRole: 'ADMIN' | 'CREW' | 'VIEWER' = 'CREW'): Promise<TeamContact> {
+  const response = await fetch(`${API_BASE}/team/contacts`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ email, nickname, defaultRole }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to add team contact');
+  }
+
+  return response.json();
+}
+
+export async function updateTeamContact(id: string, data: { nickname?: string; defaultRole?: 'ADMIN' | 'CREW' | 'VIEWER' }): Promise<TeamContact> {
+  const response = await fetch(`${API_BASE}/team/contacts/${id}`, {
+    method: 'PATCH',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to update team contact');
+  }
+
+  return response.json();
+}
+
+export async function removeTeamContact(id: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/team/contacts/${id}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || 'Failed to remove team contact');
+  }
+}
+
+export async function getPastCollaborators(): Promise<Collaborator[]> {
+  const response = await fetch(`${API_BASE}/team/collaborators`, {
+    headers: getAuthHeaders(),
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch past collaborators');
   }
 
   return response.json();
